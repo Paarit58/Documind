@@ -1,0 +1,2458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuMind - OCR Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f2ff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .preview-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .preview-container.show {
+            display: block;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f0f2ff;
+            color: #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #e8ebff;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results-container.show {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f2ff;
+        }
+
+        .results-title {
+            font-size: 1.5em;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .metadata {
+            color: #666;
+            font-size: 0.9em;
+            background: #f0f2ff;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover:not(:disabled) {
+            background: #764ba2;
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .copy-btn:disabled {
+            cursor: not-allowed;
+        }
+
+        .copy-btn.copied {
+            background: #48bb78;
+        }
+
+        .text-output {
+            background: #f8f9ff;
+            border-radius: 8px;
+            padding: 25px;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 1em;
+            line-height: 1.8;
+            color: #2d3748;
+            border: 1px solid #e2e8f0;
+        }
+
+        .text-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .text-output::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .text-output::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .text-output::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        .text-output markdown {
+            display: block;
+        }
+
+        .text-output h1, .text-output h2, .text-output h3 {
+            color: #1a202c;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 700;
+        }
+
+        .text-output h1 {
+            font-size: 1.75em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.3em;
+        }
+
+        .text-output h2 {
+            font-size: 1.5em;
+        }
+
+        .text-output h3 {
+            font-size: 1.25em;
+        }
+
+        .text-output code {
+            background: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e53e3e;
+        }
+
+        .text-output pre {
+            background: #2d3748;
+            color: #f7fafc;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .text-output pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+
+        .text-output blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 1em;
+            margin: 1em 0;
+            color: #4a5568;
+            font-style: italic;
+        }
+
+        .text-output table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        .text-output table th,
+        .text-output table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .text-output table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .text-output ul, .text-output ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        .text-output li {
+            margin: 0.5em 0;
+        }
+
+        .text-output p {
+            margin: 1em 0;
+        }
+
+        .text-output a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .text-output a:hover {
+            text-decoration: underline;
+        }
+
+        .preprocessed-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preprocessed-container.show {
+            display: block;
+        }
+
+        .preprocessed-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .analysis-info {
+            background: #f0f2ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .analysis-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+
+        .analysis-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .analysis-value {
+            color: #666;
+        }
+
+        .phase-outputs {
+            margin-top: 20px;
+        }
+
+        .phase-section {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .phase-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #6366f1;
+        }
+
+        .phase-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .phase-metadata {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .config-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .config-section.show {
+            display: block;
+        }
+
+        .config-toggle {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.9em;
+            margin-top: 15px;
+        }
+
+        .config-toggle:hover {
+            color: #764ba2;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        /* JSON Viewer Styles */
+        .json-viewer-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .json-viewer-container.show {
+            display: block;
+        }
+
+        .json-viewer {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: #d4d4d4;
+            border: 1px solid #3e3e3e;
+        }
+
+        .json-viewer::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .json-viewer::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        .json-viewer::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .json-key {
+            color: #9cdcfe;
+        }
+
+        .json-string {
+            color: #ce9178;
+        }
+
+        .json-number {
+            color: #b5cea8;
+        }
+
+        .json-boolean {
+            color: #569cd6;
+        }
+
+        .json-null {
+            color: #569cd6;
+        }
+
+        .json-punctuation {
+            color: #d4d4d4;
+        }
+
+        /* Bounding Box Container Styles */
+        .bbox-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .bbox-container.show {
+            display: block;
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .bbox-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .bbox-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .bbox-canvas.hidden {
+            display: none;
+        }
+
+        /* Editable Text Blocks Styles */
+        .editable-text-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .editable-text-container.show {
+            display: block;
+        }
+
+        .editable-blocks {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .editable-block {
+            background: #f8f9ff;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .editable-block:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .editable-block.editing {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .editable-block.edited {
+            border-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .block-info {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .block-index {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.8em;
+        }
+
+        .block-confidence {
+            background: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .block-bbox {
+            background: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8em;
+        }
+
+        .block-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .block-action-btn {
+            background: none;
+            border: 1px solid #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s;
+        }
+
+        .block-action-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .block-text {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            min-height: 40px;
+            word-wrap: break-word;
+        }
+
+        .block-text.editing {
+            border: 2px solid #667eea;
+        }
+
+        .block-text textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: inherit;
+            resize: vertical;
+        }
+
+        .block-text textarea:focus {
+            outline: none;
+            border-color: #764ba2;
+        }
+
+        .edit-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .edit-controls button {
+            flex: none;
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 DocuMind</h1>
+        <p class="subtitle">Intelligent OCR Platform - Extract text from your documents</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">Drag & drop your image here</div>
+            <div class="upload-hint">or click to browse (JPEG, PNG, WEBP, TIFF)</div>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/tiff">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+            <img id="previewImage" class="preview-image" alt="Preview">
+        </div>
+
+        <div class="button-group">
+            <button class="btn-primary" id="processBtn" disabled>Process Document</button>
+            <button class="btn-secondary" id="clearBtn">Clear</button>
+        </div>
+
+        <button class="config-toggle" id="configToggle">Advanced Options</button>
+        <div class="config-section" id="configSection">
+            <div class="form-group">
+                <label for="engine">OCR Engine:</label>
+                <select id="engine">
+                    <option value="paddleocr_vl">PaddleOCR-VL (Default)</option>
+                    <!-- Temporarily disabled - Qwen3VLForConditionalGeneration not available in transformers==4.55.0 -->
+                    <!-- <option value="qwen_vl">Qwen3-VL-2B</option> -->
+                </select>
+            </div>
+            <div class="form-group" id="paddleocrModeGroup" style="display: none;">
+                <label for="paddleocrMode">PaddleOCR Mode:</label>
+                <select id="paddleocrMode">
+                    <option value="document_parsing">Document Parsing (Full Page)</option>
+                    <option value="element_recognition">Element Recognition (OCR/Table/Formula/Chart)</option>
+                </select>
+            </div>
+            <div class="form-group" id="modelVariantGroup">
+                <label for="modelVariant">Model Variant:</label>
+                <select id="modelVariant">
+                    <option value="gundam">Gundam (Recommended)</option>
+                    <option value="tiny">Tiny (Fastest)</option>
+                    <option value="small">Small (Fast)</option>
+                    <option value="base">Base (Balanced)</option>
+                    <option value="large">Large (Best Quality)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="promptProfile">Prompt Profile:</label>
+                <select id="promptProfile">
+                    <option value="markdown">Markdown</option>
+                    <option value="free_ocr">Free OCR</option>
+                    <option value="form">Form</option>
+                    <option value="table">Table</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="enableSemantic" style="width: auto;">
+                    <span>Enable Semantic Understanding (Ollama + Gemma2B)</span>
+                </label>
+            </div>
+            <div class="form-group" id="semanticPromptGroup" style="display: none;">
+                <label for="semanticPrompt">Semantic Analysis Prompt (Optional):</label>
+                <textarea id="semanticPrompt" rows="3" placeholder="Leave empty to use default prompt. The default will analyze the document and extract key insights, summarize main points, identify document type, and highlight important information."></textarea>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Processing your document...</div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="preprocessed-container" id="preprocessedContainer" style="display: none;">
+            <div class="results-header">
+                <div class="results-title">Preprocessing Results</div>
+            </div>
+            <img id="preprocessedImage" class="preprocessed-image" alt="Preprocessed">
+            <div class="analysis-info" id="analysisInfo"></div>
+            <div class="phase-outputs" id="phaseOutputs"></div>
+        </div>
+
+        <div class="results-container" id="resultsContainer">
+            <div class="results-header">
+                <div>
+                    <div class="results-title">📝 Extracted Text</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="metadata" id="metadata"></div>
+                    <button class="copy-btn" id="copyBtn" title="Copy to clipboard">📋 Copy</button>
+                </div>
+            </div>
+            <div class="text-output" id="textOutput"></div>
+        </div>
+
+        <div class="json-viewer-container" id="jsonViewerContainer">
+            <div class="results-header">
+                <div class="results-title">📋 JSON Result</div>
+                <button class="copy-btn" id="copyJsonBtn" title="Copy JSON to clipboard">📋 Copy JSON</button>
+            </div>
+            <div class="json-viewer" id="jsonViewer"></div>
+        </div>
+
+        <div class="bbox-container" id="bboxContainer">
+            <div class="results-header">
+                <div class="results-title">📍 Text Regions</div>
+                <button class="btn-secondary" id="toggleBboxesBtn">Toggle Boxes</button>
+            </div>
+            <div class="image-wrapper" id="imageWrapper">
+                <img id="bboxImage" class="bbox-image" alt="Image with bounding boxes">
+                <canvas id="bboxCanvas" class="bbox-canvas"></canvas>
+            </div>
+        </div>
+
+        <div class="editable-text-container" id="editableTextContainer">
+            <div class="results-header">
+                <div class="results-title">✏️ Editable Text Blocks</div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-secondary" id="saveEditsBtn">Save Changes</button>
+                    <button class="btn-secondary" id="resetEditsBtn">Reset</button>
+                    <button class="btn-secondary" id="exportJsonBtn">Export JSON</button>
+                </div>
+            </div>
+            <div class="editable-blocks" id="editableBlocks"></div>
+        </div>
+
+        <div class="results-container" id="semanticContainer" style="display: none;">
+            <div class="results-header">
+                <div class="results-title">🧠 Semantic Understanding</div>
+            </div>
+            <div class="text-output" id="semanticOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const processBtn = document.getElementById('processBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const textOutput = document.getElementById('textOutput');
+        const metadata = document.getElementById('metadata');
+        const configToggle = document.getElementById('configToggle');
+        const configSection = document.getElementById('configSection');
+        const preprocessedContainer = document.getElementById('preprocessedContainer');
+        const preprocessedImage = document.getElementById('preprocessedImage');
+        const analysisInfo = document.getElementById('analysisInfo');
+        const copyBtn = document.getElementById('copyBtn');
+        const jsonViewerContainer = document.getElementById('jsonViewerContainer');
+        const jsonViewer = document.getElementById('jsonViewer');
+        const copyJsonBtn = document.getElementById('copyJsonBtn');
+        const bboxContainer = document.getElementById('bboxContainer');
+        const imageWrapper = document.getElementById('imageWrapper');
+        const bboxImage = document.getElementById('bboxImage');
+        const bboxCanvas = document.getElementById('bboxCanvas');
+        const toggleBboxesBtn = document.getElementById('toggleBboxesBtn');
+        const editableTextContainer = document.getElementById('editableTextContainer');
+        const editableBlocks = document.getElementById('editableBlocks');
+        const saveEditsBtn = document.getElementById('saveEditsBtn');
+        const resetEditsBtn = document.getElementById('resetEditsBtn');
+        const exportJsonBtn = document.getElementById('exportJsonBtn');
+        const engineSelect = document.getElementById('engine');
+        const paddleocrModeGroup = document.getElementById('paddleocrModeGroup');
+        const modelVariantGroup = document.getElementById('modelVariantGroup');
+        const enableSemantic = document.getElementById('enableSemantic');
+        const semanticPromptGroup = document.getElementById('semanticPromptGroup');
+        const semanticContainer = document.getElementById('semanticContainer');
+        const semanticOutput = document.getElementById('semanticOutput');
+
+        let selectedFile = null;
+        let currentResult = null;
+        let originalTextBlocks = null;
+        let editedTextBlocks = null;
+        let bboxesVisible = true;
+        let highlightedBboxIndex = -1;
+
+        // Engine selection handler - show/hide relevant options
+        function updateEngineUI() {
+            const engine = engineSelect.value;
+            if (engine === 'paddleocr_vl') {
+                paddleocrModeGroup.style.display = 'block';
+                modelVariantGroup.style.display = 'none'; // Model variant not used by PaddleOCR
+            } else {
+                paddleocrModeGroup.style.display = 'none';
+                modelVariantGroup.style.display = 'block';
+            }
+        }
+        
+        engineSelect.addEventListener('change', updateEngineUI);
+        
+        // Initialize UI on page load
+        updateEngineUI();
+
+        // Semantic understanding toggle
+        enableSemantic.addEventListener('change', () => {
+            semanticPromptGroup.style.display = enableSemantic.checked ? 'block' : 'none';
+        });
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Handle file selection
+        function handleFile(file) {
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff'];
+            if (!validTypes.includes(file.type)) {
+                showError('Invalid file type. Please upload JPEG, PNG, WEBP, or TIFF images.');
+                return;
+            }
+
+            // Validate file size (20MB limit)
+            const maxSize = 20 * 1024 * 1024; // 20MB
+            if (file.size > maxSize) {
+                showError('File size exceeds 20MB limit.');
+                return;
+            }
+
+            selectedFile = file;
+            
+            // Show file info
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('show');
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.classList.add('show');
+            };
+            reader.readAsDataURL(file);
+
+            // Enable process button
+            processBtn.disabled = false;
+            hideError();
+            hideResults();
+            hidePreprocessed();
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // Process button
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            // Disable button and show loading
+            processBtn.disabled = true;
+            loading.classList.add('show');
+            hideError();
+            hideResults();
+            hidePreprocessed();
+
+            try {
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                // Get config
+                const engine = document.getElementById('engine').value;
+                const config = {
+                    engine: engine,
+                    prompt_profile: document.getElementById('promptProfile').value,
+                };
+
+                // Add model variant only for non-PaddleOCR engines
+                if (engine !== 'paddleocr_vl') {
+                    config.model_variant = document.getElementById('modelVariant').value;
+                }
+
+                // Add PaddleOCR mode if using PaddleOCR
+                if (engine === 'paddleocr_vl') {
+                    config.paddleocr_mode = document.getElementById('paddleocrMode').value;
+                }
+
+                // Add semantic understanding config
+                if (enableSemantic.checked) {
+                    config.semantic = {
+                        enable: true,
+                    };
+                    const semanticPrompt = document.getElementById('semanticPrompt').value.trim();
+                    if (semanticPrompt) {
+                        config.semantic.prompt = semanticPrompt;
+                    }
+                }
+
+                formData.append('config', JSON.stringify(config));
+
+                // Call OCR API
+                const response = await fetch('/api/v1/ocr', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'OCR processing failed');
+                }
+
+                const result = await response.json();
+
+                // Store result for editing
+                currentResult = result;
+                originalTextBlocks = JSON.parse(JSON.stringify(result.text_blocks || []));
+                editedTextBlocks = JSON.parse(JSON.stringify(result.text_blocks || []));
+
+                // Display results
+                displayResults(result);
+
+            } catch (err) {
+                showError(err.message || 'An error occurred while processing the document.');
+            } finally {
+                processBtn.disabled = false;
+                loading.classList.remove('show');
+            }
+        });
+
+        // Display results
+        function displayResults(result) {
+            // Display step results (new structure with step_results)
+            if (result.raw_output && result.raw_output.step_results) {
+                const stepResults = result.raw_output.step_results;
+                
+                // Check for preprocessing step results
+                if (stepResults.preprocess) {
+                    const preprocessResult = stepResults.preprocess;
+                    
+                    // Determine which image to display as the main preprocessed image
+                    // Prefer the final preprocessed_image, but fallback to CLAHE if available
+                    let mainImageSrc = preprocessResult.preprocessed_image;
+                    
+                    // If no main preprocessed image, try to use CLAHE from phase outputs
+                    if (!mainImageSrc && preprocessResult.phase_outputs?.layer1_color_lighting?.clahe?.image) {
+                        mainImageSrc = preprocessResult.phase_outputs.layer1_color_lighting.clahe.image;
+                    }
+                    
+                    // Display preprocessed image if available
+                    if (mainImageSrc) {
+                        console.log('Setting preprocessed image source');
+                        
+                        // Clear any previous error state
+                        preprocessedImage.onerror = null;
+                        preprocessedImage.onload = null;
+                        
+                        // Set up error handling
+                        preprocessedImage.onerror = () => {
+                            console.error('Failed to load preprocessed image');
+                            console.error('Image data length:', mainImageSrc?.length);
+                            console.error('Image data preview:', mainImageSrc?.substring(0, 100));
+                            showError('Failed to load preprocessed image. Check console for details.');
+                        };
+                        
+                        // Confirm successful load
+                        preprocessedImage.onload = () => {
+                            console.log('Preprocessed image loaded successfully');
+                        };
+                        
+                        // Set the image source and show container
+                        preprocessedImage.src = mainImageSrc;
+                        preprocessedContainer.classList.add('show');
+                        
+                        // Force display if hidden
+                        preprocessedContainer.style.display = 'block';
+                        
+                        // Display phase outputs
+                        const phaseOutputs = document.getElementById('phaseOutputs');
+                        if (preprocessResult.phase_outputs) {
+                            let phaseHTML = '';
+                            
+                            // Layer 1: Color & Lighting
+                            if (preprocessResult.phase_outputs.layer1_color_lighting) {
+                                const layer1 = preprocessResult.phase_outputs.layer1_color_lighting;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 1: Color & Lighting</div>';
+                                
+                                // Grayscale output
+                                if (layer1.grayscale) {
+                                    phaseHTML += '<div style="margin-bottom: 15px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Grayscale Conversion</div>';
+                                    phaseHTML += `<img src="${layer1.grayscale.image}" class="phase-image" alt="Grayscale" onerror="console.error('Failed to load grayscale image')">`;
+                                    if (layer1.grayscale.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${layer1.grayscale.size[0]} × ${layer1.grayscale.size[1]}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // CLAHE output
+                                if (layer1.clahe) {
+                                    phaseHTML += '<div style="margin-bottom: 15px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">CLAHE Enhancement</div>';
+                                    phaseHTML += `<img src="${layer1.clahe.image}" class="phase-image" alt="CLAHE" onerror="console.error('Failed to load CLAHE image')">`;
+                                    if (layer1.clahe.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${layer1.clahe.size[0]} × ${layer1.clahe.size[1]}`;
+                                        if (layer1.clahe.clip_limit !== undefined) {
+                                            phaseHTML += ` | Clip Limit: ${layer1.clahe.clip_limit}`;
+                                        }
+                                        if (layer1.clahe.tile_grid_size) {
+                                            phaseHTML += ` | Tile Grid: ${layer1.clahe.tile_grid_size[0]}×${layer1.clahe.tile_grid_size[1]}`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Denoised output (if available)
+                                if (layer1.denoised) {
+                                    phaseHTML += '<div style="margin-bottom: 15px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Noise Reduction (Bilateral Filter)</div>';
+                                    phaseHTML += `<img src="${layer1.denoised.image}" class="phase-image" alt="Denoised" onerror="console.error('Failed to load denoised image')">`;
+                                    if (layer1.denoised.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${layer1.denoised.size[0]} × ${layer1.denoised.size[1]}`;
+                                        if (layer1.denoised.d !== undefined) {
+                                            phaseHTML += ` | Filter Size: ${layer1.denoised.d}`;
+                                        }
+                                        if (layer1.denoised.sigma_color !== undefined && layer1.denoised.sigma_space !== undefined) {
+                                            phaseHTML += ` | Sigma: ${layer1.denoised.sigma_color}/${layer1.denoised.sigma_space}`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Metadata
+                                if (layer1.metadata) {
+                                    const meta = layer1.metadata;
+                                    phaseHTML += '<div class="phase-metadata">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Statistics:</div>';
+                                    if (meta.grayscale_mean !== undefined) {
+                                        phaseHTML += `<div>Grayscale Mean: ${meta.grayscale_mean.toFixed(2)} | Std: ${meta.grayscale_std?.toFixed(2) || 'N/A'}</div>`;
+                                    }
+                                    if (meta.clahe_mean !== undefined) {
+                                        phaseHTML += `<div>CLAHE Mean: ${meta.clahe_mean.toFixed(2)} | Std: ${meta.clahe_std?.toFixed(2) || 'N/A'}</div>`;
+                                    }
+                                    if (meta.final_mean !== undefined) {
+                                        phaseHTML += `<div>Final (Denoised) Mean: ${meta.final_mean.toFixed(2)} | Std: ${meta.final_std?.toFixed(2) || 'N/A'}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            // Layer 2: Geometric
+                            if (preprocessResult.phase_outputs.layer2_geometric) {
+                                const layer2 = preprocessResult.phase_outputs.layer2_geometric;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 2: Geometric (Alignment)</div>';
+                                
+                                // Deskew section
+                                if (layer2.deskew) {
+                                    const deskew = layer2.deskew;
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Deskewing</div>';
+                                    
+                                    // Original image before deskew
+                                    if (deskew.original_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Original (Before Deskew)</div>';
+                                        phaseHTML += `<img src="${deskew.original_image}" class="phase-image" alt="Original" onerror="console.error('Failed to load original image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Detected angle and method
+                                    if (deskew.detected_angle !== undefined) {
+                                        phaseHTML += '<div class="phase-metadata" style="margin-bottom: 10px;">';
+                                        phaseHTML += `<div><strong>Detected Angle:</strong> ${deskew.detected_angle.toFixed(2)}°</div>`;
+                                        if (deskew.method_used) {
+                                            phaseHTML += `<div><strong>Method Used:</strong> ${deskew.method_used}</div>`;
+                                        }
+                                        if (deskew.rotation_applied !== undefined) {
+                                            phaseHTML += `<div><strong>Rotation Applied:</strong> ${deskew.rotation_applied ? 'Yes' : 'No'}</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Hough result
+                                    if (deskew.hough_result) {
+                                        const hough = deskew.hough_result;
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Hough Transform Result</div>';
+                                        if (hough.lines_visualization) {
+                                            phaseHTML += `<img src="${hough.lines_visualization}" class="phase-image" alt="Hough Lines" onerror="console.error('Failed to load Hough lines')">`;
+                                        }
+                                        phaseHTML += `<div class="phase-metadata">Angle: ${hough.angle.toFixed(2)}° | Confidence: ${(hough.confidence * 100).toFixed(1)}%</div>`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Text orientation result
+                                    if (deskew.text_result) {
+                                        const text = deskew.text_result;
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Text Orientation Result</div>';
+                                        phaseHTML += `<div class="phase-metadata">Angle: ${text.angle.toFixed(2)}° | Confidence: ${(text.confidence * 100).toFixed(1)}%</div>`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Rotated image
+                                    if (deskew.rotated_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Rotated Image</div>';
+                                        phaseHTML += `<img src="${deskew.rotated_image}" class="phase-image" alt="Rotated" onerror="console.error('Failed to load rotated image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Border detection section
+                                if (layer2.border) {
+                                    const border = layer2.border;
+                                    phaseHTML += '<div style="margin-bottom: 20px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Border Detection & Padding</div>';
+                                    
+                                    // Bounding box visualization
+                                    if (border.bounding_box_visualization) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Detected Content Boundaries</div>';
+                                        phaseHTML += `<img src="${border.bounding_box_visualization}" class="phase-image" alt="Bounding Box" onerror="console.error('Failed to load bounding box visualization')">`;
+                                        if (border.bounding_box) {
+                                            const bbox = border.bounding_box;
+                                            phaseHTML += `<div class="phase-metadata">Bounding Box: (${bbox[0]}, ${bbox[1]}) - ${bbox[2]}×${bbox[3]}</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Cropped image
+                                    if (border.cropped_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Cropped to Content</div>';
+                                        phaseHTML += `<img src="${border.cropped_image}" class="phase-image" alt="Cropped" onerror="console.error('Failed to load cropped image')">`;
+                                        if (border.cropped_size) {
+                                            phaseHTML += `<div class="phase-metadata">Size: ${border.cropped_size[0]} × ${border.cropped_size[1]}</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Padded image
+                                    if (border.padded_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Final Image (With Padding)</div>';
+                                        phaseHTML += `<img src="${border.padded_image}" class="phase-image" alt="Padded" onerror="console.error('Failed to load padded image')">`;
+                                        if (border.padding_size !== undefined) {
+                                            phaseHTML += `<div class="phase-metadata">Padding: ${border.padding_size}px`;
+                                            if (border.final_size) {
+                                                phaseHTML += ` | Final Size: ${border.final_size[0]} × ${border.final_size[1]}`;
+                                            }
+                                            phaseHTML += '</div>';
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Metadata
+                                if (layer2.metadata) {
+                                    const meta = layer2.metadata;
+                                    phaseHTML += '<div class="phase-metadata">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Size Changes:</div>';
+                                    if (meta.original_size) {
+                                        phaseHTML += `<div>Original: ${meta.original_size[0]} × ${meta.original_size[1]}</div>`;
+                                    }
+                                    if (meta.deskewed_size) {
+                                        phaseHTML += `<div>After Deskew: ${meta.deskewed_size[0]} × ${meta.deskewed_size[1]}</div>`;
+                                    }
+                                    if (meta.final_size) {
+                                        phaseHTML += `<div>Final: ${meta.final_size[0]} × ${meta.final_size[1]}</div>`;
+                                    }
+                                    if (meta.rotation_applied !== undefined) {
+                                        phaseHTML += `<div>Rotation Applied: ${meta.rotation_applied ? 'Yes' : 'No'}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            // Layer 3: Signal-to-Noise
+                            if (preprocessResult.phase_outputs.layer3_signal_noise) {
+                                const layer3 = preprocessResult.phase_outputs.layer3_signal_noise;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 3: Signal-to-Noise</div>';
+                                
+                                // Noise Detection Section
+                                if (layer3.noise_detection) {
+                                    const noiseDet = layer3.noise_detection;
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Noise Detection</div>';
+                                    
+                                    phaseHTML += '<div class="phase-metadata">';
+                                    if (noiseDet.noise_level !== undefined) {
+                                        phaseHTML += `<div><strong>Noise Level:</strong> ${noiseDet.noise_level.toFixed(3)}</div>`;
+                                    }
+                                    if (noiseDet.noise_score !== undefined) {
+                                        phaseHTML += `<div><strong>Noise Score:</strong> ${noiseDet.noise_score.toFixed(3)}</div>`;
+                                    }
+                                    if (noiseDet.detection_method) {
+                                        phaseHTML += `<div><strong>Detection Method:</strong> ${noiseDet.detection_method}</div>`;
+                                    }
+                                    if (noiseDet.auto_detected !== undefined) {
+                                        phaseHTML += `<div><strong>Auto-Detected:</strong> ${noiseDet.auto_detected ? 'Yes' : 'No'}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Median Blur Section
+                                if (layer3.median_blur && layer3.median_blur.enabled) {
+                                    const median = layer3.median_blur;
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Median Blur Filtering</div>';
+                                    
+                                    // Original image
+                                    if (median.original_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Original (Before Median Blur)</div>';
+                                        phaseHTML += `<img src="${median.original_image}" class="phase-image" alt="Original" onerror="console.error('Failed to load original image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Filtered image
+                                    if (median.filtered_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Median Blurred Image</div>';
+                                        phaseHTML += `<img src="${median.filtered_image}" class="phase-image" alt="Median Blurred" onerror="console.error('Failed to load median blurred image')">`;
+                                        phaseHTML += '<div class="phase-metadata">';
+                                        if (median.kernel_size !== undefined) {
+                                            phaseHTML += `Kernel Size: ${median.kernel_size}`;
+                                        }
+                                        if (median.noise_reduction_metric !== undefined) {
+                                            phaseHTML += ` | Noise Reduction: ${(median.noise_reduction_metric * 100).toFixed(1)}%`;
+                                        }
+                                        phaseHTML += '</div>';
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Bilateral Filter Section
+                                if (layer3.bilateral_filter && layer3.bilateral_filter.enabled) {
+                                    const bilateral = layer3.bilateral_filter;
+                                    phaseHTML += '<div style="margin-bottom: 20px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Bilateral Filtering</div>';
+                                    
+                                    // Original image
+                                    if (bilateral.original_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Original (Before Bilateral Filter)</div>';
+                                        phaseHTML += `<img src="${bilateral.original_image}" class="phase-image" alt="Original" onerror="console.error('Failed to load original image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Filtered image
+                                    if (bilateral.filtered_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Bilateral Filtered Image</div>';
+                                        phaseHTML += `<img src="${bilateral.filtered_image}" class="phase-image" alt="Bilateral Filtered" onerror="console.error('Failed to load bilateral filtered image')">`;
+                                        phaseHTML += '<div class="phase-metadata">';
+                                        if (bilateral.d !== undefined) {
+                                            phaseHTML += `Filter Size (d): ${bilateral.d}`;
+                                        }
+                                        if (bilateral.sigma_color !== undefined && bilateral.sigma_space !== undefined) {
+                                            phaseHTML += ` | Sigma: ${bilateral.sigma_color.toFixed(1)}/${bilateral.sigma_space.toFixed(1)}`;
+                                        }
+                                        if (bilateral.noise_reduction_metric !== undefined) {
+                                            phaseHTML += ` | Noise Reduction: ${(bilateral.noise_reduction_metric * 100).toFixed(1)}%`;
+                                        }
+                                        phaseHTML += '</div>';
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Comparison Section (if both methods enabled)
+                                if (layer3.median_blur && layer3.median_blur.enabled && 
+                                    layer3.bilateral_filter && layer3.bilateral_filter.enabled) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Comparison</div>';
+                                    phaseHTML += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">';
+                                    
+                                    if (layer3.median_blur.filtered_image) {
+                                        phaseHTML += '<div>';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Median Blur</div>';
+                                        phaseHTML += `<img src="${layer3.median_blur.filtered_image}" class="phase-image" alt="Median Blur" style="max-width: 100%;">`;
+                                        if (layer3.metadata && layer3.metadata.method_used === 'median') {
+                                            phaseHTML += '<div style="margin-top: 5px; color: #6366f1; font-weight: 600;">✓ Used as Final Output</div>';
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    if (layer3.bilateral_filter.filtered_image) {
+                                        phaseHTML += '<div>';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Bilateral Filter</div>';
+                                        phaseHTML += `<img src="${layer3.bilateral_filter.filtered_image}" class="phase-image" alt="Bilateral Filter" style="max-width: 100%;">`;
+                                        if (layer3.metadata && layer3.metadata.method_used === 'bilateral') {
+                                            phaseHTML += '<div style="margin-top: 5px; color: #6366f1; font-weight: 600;">✓ Used as Final Output</div>';
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Metadata
+                                if (layer3.metadata) {
+                                    const meta = layer3.metadata;
+                                    phaseHTML += '<div class="phase-metadata">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Information:</div>';
+                                    if (meta.original_size) {
+                                        phaseHTML += `<div>Original Size: ${meta.original_size[0]} × ${meta.original_size[1]}</div>`;
+                                    }
+                                    if (meta.final_size) {
+                                        phaseHTML += `<div>Final Size: ${meta.final_size[0]} × ${meta.final_size[1]}</div>`;
+                                    }
+                                    if (meta.method_used) {
+                                        phaseHTML += `<div>Method Used: ${meta.method_used}</div>`;
+                                    }
+                                    if (meta.noise_reduced !== undefined) {
+                                        phaseHTML += `<div>Noise Reduced: ${meta.noise_reduced ? 'Yes' : 'No'}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            // Layer 4: Binarization
+                            if (preprocessResult.phase_outputs.layer4_binarization) {
+                                const layer4 = preprocessResult.phase_outputs.layer4_binarization;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 4: Binarization</div>';
+                                
+                                // Grayscale Section
+                                if (layer4.grayscale) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Grayscale Input</div>';
+                                    phaseHTML += `<img src="${layer4.grayscale.image}" class="phase-image" alt="Grayscale" onerror="console.error('Failed to load grayscale image')">`;
+                                    if (layer4.grayscale.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${layer4.grayscale.size[0]} × ${layer4.grayscale.size[1]}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Otsu's Method Section
+                                if (layer4.otsu && layer4.otsu.enabled) {
+                                    const otsu = layer4.otsu;
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Otsu\'s Thresholding</div>';
+                                    
+                                    // Original grayscale
+                                    if (otsu.original_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Original Grayscale</div>';
+                                        phaseHTML += `<img src="${otsu.original_image}" class="phase-image" alt="Original" onerror="console.error('Failed to load original image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Binary image
+                                    if (otsu.binary_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Binary Image (Otsu)</div>';
+                                        phaseHTML += `<img src="${otsu.binary_image}" class="phase-image" alt="Otsu Binary" onerror="console.error('Failed to load Otsu binary image')">`;
+                                        phaseHTML += '<div class="phase-metadata">';
+                                        if (otsu.threshold_value !== undefined) {
+                                            phaseHTML += `Threshold Value: ${otsu.threshold_value.toFixed(2)}`;
+                                        }
+                                        if (otsu.threshold_type) {
+                                            phaseHTML += ` | Type: ${otsu.threshold_type}`;
+                                        }
+                                        if (otsu.quality_metric !== undefined) {
+                                            phaseHTML += ` | Quality: ${(otsu.quality_metric * 100).toFixed(1)}%`;
+                                        }
+                                        phaseHTML += '</div>';
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Sauvola's Method Section
+                                if (layer4.sauvola && layer4.sauvola.enabled) {
+                                    const sauvola = layer4.sauvola;
+                                    phaseHTML += '<div style="margin-bottom: 20px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Sauvola\'s Thresholding</div>';
+                                    
+                                    // Original grayscale
+                                    if (sauvola.original_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Original Grayscale</div>';
+                                        phaseHTML += `<img src="${sauvola.original_image}" class="phase-image" alt="Original" onerror="console.error('Failed to load original image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Binary image
+                                    if (sauvola.binary_image) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Binary Image (Sauvola)</div>';
+                                        phaseHTML += `<img src="${sauvola.binary_image}" class="phase-image" alt="Sauvola Binary" onerror="console.error('Failed to load Sauvola binary image')">`;
+                                        phaseHTML += '<div class="phase-metadata">';
+                                        if (sauvola.window_size !== undefined) {
+                                            phaseHTML += `Window Size: ${sauvola.window_size}`;
+                                        }
+                                        if (sauvola.k !== undefined && sauvola.r !== undefined) {
+                                            phaseHTML += ` | Parameters: k=${sauvola.k.toFixed(3)}, r=${sauvola.r.toFixed(1)}`;
+                                        }
+                                        if (sauvola.quality_metric !== undefined) {
+                                            phaseHTML += ` | Quality: ${(sauvola.quality_metric * 100).toFixed(1)}%`;
+                                        }
+                                        phaseHTML += '</div>';
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Comparison Section (if both methods enabled)
+                                if (layer4.otsu && layer4.otsu.enabled && 
+                                    layer4.sauvola && layer4.sauvola.enabled) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Comparison</div>';
+                                    phaseHTML += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">';
+                                    
+                                    if (layer4.otsu.binary_image) {
+                                        phaseHTML += '<div>';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Otsu\'s Method</div>';
+                                        phaseHTML += `<img src="${layer4.otsu.binary_image}" class="phase-image" alt="Otsu" style="max-width: 100%;">`;
+                                        if (layer4.metadata && layer4.metadata.method_used === 'otsu') {
+                                            phaseHTML += '<div style="margin-top: 5px; color: #6366f1; font-weight: 600;">✓ Used as Final Output</div>';
+                                        }
+                                        if (layer4.otsu.quality_metric !== undefined) {
+                                            phaseHTML += `<div style="margin-top: 5px; font-size: 0.9em; color: #666;">Quality: ${(layer4.otsu.quality_metric * 100).toFixed(1)}%</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    if (layer4.sauvola.binary_image) {
+                                        phaseHTML += '<div>';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Sauvola\'s Method</div>';
+                                        phaseHTML += `<img src="${layer4.sauvola.binary_image}" class="phase-image" alt="Sauvola" style="max-width: 100%;">`;
+                                        if (layer4.metadata && layer4.metadata.method_used === 'sauvola') {
+                                            phaseHTML += '<div style="margin-top: 5px; color: #6366f1; font-weight: 600;">✓ Used as Final Output</div>';
+                                        }
+                                        if (layer4.sauvola.quality_metric !== undefined) {
+                                            phaseHTML += `<div style="margin-top: 5px; font-size: 0.9em; color: #666;">Quality: ${(layer4.sauvola.quality_metric * 100).toFixed(1)}%</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Metadata
+                                if (layer4.metadata) {
+                                    const meta = layer4.metadata;
+                                    phaseHTML += '<div class="phase-metadata">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Information:</div>';
+                                    if (meta.original_size) {
+                                        phaseHTML += `<div>Original Size: ${meta.original_size[0]} × ${meta.original_size[1]}</div>`;
+                                    }
+                                    if (meta.final_size) {
+                                        phaseHTML += `<div>Final Size: ${meta.final_size[0]} × ${meta.final_size[1]}</div>`;
+                                    }
+                                    if (meta.method_used) {
+                                        phaseHTML += `<div>Method Used: ${meta.method_used}</div>`;
+                                    }
+                                    if (meta.binarization_applied !== undefined) {
+                                        phaseHTML += `<div>Binarization Applied: ${meta.binarization_applied ? 'Yes' : 'No'}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            phaseOutputs.innerHTML = phaseHTML;
+                        } else {
+                            phaseOutputs.innerHTML = '';
+                        }
+                        
+                        // Display general analysis info
+                        let analysisHTML = '';
+                        if (preprocessResult.original_size && preprocessResult.preprocessed_size) {
+                            analysisHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #333;">Image Sizes:</div>';
+                            analysisHTML += `<div class="analysis-item">
+                                <span class="analysis-label">Original Size:</span>
+                                <span class="analysis-value">${preprocessResult.original_size[0]} × ${preprocessResult.original_size[1]}</span>
+                            </div>`;
+                            analysisHTML += `<div class="analysis-item">
+                                <span class="analysis-label">Preprocessed Size:</span>
+                                <span class="analysis-value">${preprocessResult.preprocessed_size[0]} × ${preprocessResult.preprocessed_size[1]}</span>
+                            </div>`;
+                        }
+                        analysisInfo.innerHTML = analysisHTML;
+                    } else {
+                        // No main image available, but we might have phase outputs
+                        console.warn('No main preprocessed image available');
+                        preprocessedContainer.classList.remove('show');
+                        
+                        // Still try to show phase outputs if available
+                        const phaseOutputs = document.getElementById('phaseOutputs');
+                        if (preprocessResult.phase_outputs) {
+                            // Same phase output rendering logic as above
+                            // (This would be duplicated, but ensures we show something)
+                            console.log('Phase outputs available but no main image');
+                        } else {
+                            if (phaseOutputs) {
+                                phaseOutputs.innerHTML = '';
+                            }
+                        }
+                    }
+                }
+            } else if (result.raw_output && result.raw_output.preprocessed_image) {
+                // Fallback for old structure (backward compatibility)
+                preprocessedImage.src = result.raw_output.preprocessed_image;
+                preprocessedContainer.classList.add('show');
+                
+                if (result.raw_output.preprocessing_analysis) {
+                    const analysis = result.raw_output.preprocessing_analysis;
+                    let analysisHTML = '<div style="font-weight: 600; margin-bottom: 10px; color: #333;">Preprocessing Analysis:</div>';
+                    
+                    if (analysis.skew_angle !== undefined) {
+                        analysisHTML += `<div class="analysis-item">
+                            <span class="analysis-label">Skew Angle:</span>
+                            <span class="analysis-value">${analysis.skew_angle.toFixed(2)}°</span>
+                        </div>`;
+                    }
+                    if (analysis.noise_level !== undefined) {
+                        analysisHTML += `<div class="analysis-item">
+                            <span class="analysis-label">Noise Level:</span>
+                            <span class="analysis-value">${analysis.noise_level.toFixed(2)}</span>
+                        </div>`;
+                    }
+                    if (analysis.contrast !== undefined) {
+                        analysisHTML += `<div class="analysis-item">
+                            <span class="analysis-label">Contrast:</span>
+                            <span class="analysis-value">${analysis.contrast.toFixed(2)}</span>
+                        </div>`;
+                    }
+                    if (analysis.blur !== undefined) {
+                        analysisHTML += `<div class="analysis-item">
+                            <span class="analysis-label">Blur Metric:</span>
+                            <span class="analysis-value">${analysis.blur.toFixed(2)}</span>
+                        </div>`;
+                    }
+                    
+                    if (result.raw_output.original_size && result.raw_output.preprocessed_size) {
+                        analysisHTML += `<div class="analysis-item">
+                            <span class="analysis-label">Original Size:</span>
+                            <span class="analysis-value">${result.raw_output.original_size[0]} × ${result.raw_output.original_size[1]}</span>
+                        </div>`;
+                        analysisHTML += `<div class="analysis-item">
+                            <span class="analysis-label">Preprocessed Size:</span>
+                            <span class="analysis-value">${result.raw_output.preprocessed_size[0]} × ${result.raw_output.preprocessed_size[1]}</span>
+                        </div>`;
+                    }
+                    
+                    analysisInfo.innerHTML = analysisHTML;
+                }
+            } else {
+                preprocessedContainer.classList.remove('show');
+                const phaseOutputs = document.getElementById('phaseOutputs');
+                if (phaseOutputs) {
+                    phaseOutputs.innerHTML = '';
+                }
+                analysisInfo.innerHTML = '';
+            }
+
+            // Combine all text blocks
+            let fullText = '';
+            if (result.text_blocks && result.text_blocks.length > 0) {
+                fullText = result.text_blocks.map(block => block.text).join('\n\n');
+            }
+
+            // Display text with better formatting
+            if (fullText && fullText.trim()) {
+                // Check if text contains markdown-like patterns
+                const hasMarkdown = /^#+\s|^\*\s|^\d+\.\s|```|`|\[.*\]\(.*\)|^\|.*\|/m.test(fullText);
+                
+                if (hasMarkdown) {
+                    // Use innerHTML for markdown-like content (basic rendering)
+                    textOutput.innerHTML = formatMarkdown(fullText);
+                } else {
+                    // Use textContent for plain text (preserves formatting)
+                    textOutput.textContent = fullText;
+                }
+                copyBtn.disabled = false;
+                copyBtn.style.opacity = '1';
+            } else {
+                textOutput.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;"><div style="font-size: 3em; margin-bottom: 10px;">📄</div><div>No text was extracted from this image.</div><div style="font-size: 0.9em; margin-top: 10px; color: #bbb;">Try a different image or check if the image contains readable text.</div></div>';
+                copyBtn.disabled = true;
+                copyBtn.style.opacity = '0.5';
+            }
+
+            // Show metadata
+            if (result.metadata) {
+                const meta = result.metadata;
+                const timeSeconds = (meta.processing_time_ms / 1000).toFixed(2);
+                // Format metadata based on engine
+                let metaText = `⚡ ${timeSeconds}s | 🤖 ${meta.engine}`;
+                if (meta.model_variant && meta.model_variant !== 'unknown') {
+                    metaText += ` ${meta.model_variant}`;
+                }
+                metadata.textContent = metaText;
+            }
+
+            resultsContainer.classList.add('show');
+
+            // Display JSON viewer
+            displayJSON(result);
+
+            // Display bounding boxes if available
+            if (result.text_blocks && result.text_blocks.length > 0 && result.text_blocks.some(block => block.bbox)) {
+                displayBoundingBoxes(result);
+            }
+
+            // Display editable text blocks
+            renderEditableBlocks(result.text_blocks || []);
+
+            // Display semantic understanding if available
+            displaySemanticUnderstanding(result);
+        }
+
+        // Display semantic understanding results
+        function displaySemanticUnderstanding(result) {
+            // Check for semantic understanding in raw_output
+            let semanticData = null;
+            
+            if (result.raw_output && result.raw_output.semantic_understanding) {
+                semanticData = result.raw_output.semantic_understanding;
+            } else if (result.raw_output && result.raw_output.step_results && result.raw_output.step_results.semantic) {
+                semanticData = result.raw_output.step_results.semantic;
+            }
+
+            if (semanticData) {
+                // Extract analysis text
+                let analysisText = '';
+                if (semanticData.analysis) {
+                    analysisText = semanticData.analysis;
+                } else if (semanticData.structured) {
+                    // If structured data, format it nicely
+                    analysisText = JSON.stringify(semanticData.structured, null, 2);
+                } else if (typeof semanticData === 'string') {
+                    analysisText = semanticData;
+                } else {
+                    analysisText = JSON.stringify(semanticData, null, 2);
+                }
+
+                if (analysisText && analysisText.trim()) {
+                    // Format the text (check if it's markdown-like)
+                    const hasMarkdown = /^#+\s|^\*\s|^\d+\.\s|```|`|\[.*\]\(.*\)/m.test(analysisText);
+                    
+                    if (hasMarkdown) {
+                        semanticOutput.innerHTML = formatMarkdown(analysisText);
+                    } else {
+                        semanticOutput.textContent = analysisText;
+                    }
+                    
+                    semanticContainer.classList.add('show');
+                } else {
+                    semanticContainer.classList.remove('show');
+                }
+            } else {
+                semanticContainer.classList.remove('show');
+            }
+        }
+
+        // Basic markdown formatter
+        function formatMarkdown(text) {
+            let html = text;
+            
+            // Headers
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+            
+            // Bold
+            html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+            html = html.replace(/__(.*?)__/gim, '<strong>$1</strong>');
+            
+            // Italic
+            html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+            html = html.replace(/_(.*?)_/gim, '<em>$1</em>');
+            
+            // Code blocks
+            html = html.replace(/```([\s\S]*?)```/gim, '<pre><code>$1</code></pre>');
+            
+            // Inline code
+            html = html.replace(/`([^`]+)`/gim, '<code>$1</code>');
+            
+            // Links
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" target="_blank">$1</a>');
+            
+            // Lists
+            html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+            html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+            html = html.replace(/^\+ (.*$)/gim, '<li>$1</li>');
+            
+            // Wrap consecutive list items in ul
+            html = html.replace(/(<li>.*<\/li>\n?)+/gim, '<ul>$&</ul>');
+            
+            // Numbered lists
+            html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>\n?)+/gim, function(match) {
+                if (match.includes('<ul>')) return match;
+                return '<ol>' + match + '</ol>';
+            });
+            
+            // Blockquotes
+            html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+            
+            // Horizontal rule
+            html = html.replace(/^---$/gim, '<hr>');
+            
+            // Paragraphs (wrap consecutive non-block elements)
+            html = html.split('\n\n').map(para => {
+                if (!para.trim()) return '';
+                if (para.startsWith('<') || para.match(/^<[h|u|o|l|p|d|b]/)) return para;
+                return '<p>' + para + '</p>';
+            }).join('\n\n');
+            
+            // Line breaks
+            html = html.replace(/\n/g, '<br>');
+            
+            return html;
+        }
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', async () => {
+            if (copyBtn.disabled) return;
+            
+            const text = textOutput.textContent || textOutput.innerText;
+            if (!text || text.includes('No text was extracted')) {
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(text);
+                copyBtn.textContent = '✓ Copied!';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = '📋 Copy';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    copyBtn.textContent = '✓ Copied!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = '📋 Copy';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                } catch (e) {
+                    alert('Failed to copy text');
+                }
+                document.body.removeChild(textArea);
+            }
+        });
+
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('show');
+            previewContainer.classList.remove('show');
+            processBtn.disabled = true;
+            hideError();
+            hideResults();
+            hidePreprocessed();
+        });
+
+        // Config toggle
+        configToggle.addEventListener('click', () => {
+            const isShowing = configSection.classList.contains('show');
+            if (isShowing) {
+                configSection.classList.remove('show');
+                configToggle.textContent = 'Advanced Options';
+            } else {
+                configSection.classList.add('show');
+                configToggle.textContent = 'Hide Options';
+            }
+        });
+
+        // Helper functions
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('show');
+        }
+
+        function hideError() {
+            error.classList.remove('show');
+        }
+
+        function hideResults() {
+            resultsContainer.classList.remove('show');
+            jsonViewerContainer.classList.remove('show');
+            bboxContainer.classList.remove('show');
+            editableTextContainer.classList.remove('show');
+            semanticContainer.classList.remove('show');
+            currentResult = null;
+            originalTextBlocks = null;
+            editedTextBlocks = null;
+        }
+
+        function hidePreprocessed() {
+            preprocessedContainer.classList.remove('show');
+        }
+
+        // JSON Display Functions
+        function displayJSON(result) {
+            jsonViewerContainer.classList.add('show');
+            const formattedJSON = formatJSON(result);
+            jsonViewer.innerHTML = formattedJSON;
+        }
+
+        function formatJSON(obj, indent = 0) {
+            const indentStr = '  '.repeat(indent);
+            const nextIndent = indent + 1;
+            
+            if (obj === null) {
+                return `<span class="json-null">null</span>`;
+            }
+            
+            if (typeof obj === 'string') {
+                return `<span class="json-string">"${escapeHtml(obj)}"</span>`;
+            }
+            
+            if (typeof obj === 'number') {
+                return `<span class="json-number">${obj}</span>`;
+            }
+            
+            if (typeof obj === 'boolean') {
+                return `<span class="json-boolean">${obj}</span>`;
+            }
+            
+            if (Array.isArray(obj)) {
+                if (obj.length === 0) {
+                    return `<span class="json-punctuation">[]</span>`;
+                }
+                const items = obj.map(item => 
+                    `${'  '.repeat(nextIndent)}${formatJSON(item, nextIndent)}`
+                ).join(`<span class="json-punctuation">,</span>\n`);
+                return `<span class="json-punctuation">[</span>\n${items}\n${indentStr}<span class="json-punctuation">]</span>`;
+            }
+            
+            if (typeof obj === 'object') {
+                const keys = Object.keys(obj);
+                if (keys.length === 0) {
+                    return `<span class="json-punctuation">{}</span>`;
+                }
+                const items = keys.map(key => {
+                    const value = formatJSON(obj[key], nextIndent);
+                    return `${'  '.repeat(nextIndent)}<span class="json-key">"${escapeHtml(key)}"</span><span class="json-punctuation">:</span> ${value}`;
+                }).join(`<span class="json-punctuation">,</span>\n`);
+                return `<span class="json-punctuation">{</span>\n${items}\n${indentStr}<span class="json-punctuation">}</span>`;
+            }
+            
+            return escapeHtml(String(obj));
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Copy JSON button
+        copyJsonBtn.addEventListener('click', async () => {
+            if (!currentResult) return;
+            
+            try {
+                const jsonText = JSON.stringify(currentResult, null, 2);
+                await navigator.clipboard.writeText(jsonText);
+                copyJsonBtn.textContent = '✓ Copied!';
+                copyJsonBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyJsonBtn.textContent = '📋 Copy JSON';
+                    copyJsonBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                const textArea = document.createElement('textarea');
+                textArea.value = JSON.stringify(currentResult, null, 2);
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    copyJsonBtn.textContent = '✓ Copied!';
+                    copyJsonBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyJsonBtn.textContent = '📋 Copy JSON';
+                        copyJsonBtn.classList.remove('copied');
+                    }, 2000);
+                } catch (e) {
+                    alert('Failed to copy JSON');
+                }
+                document.body.removeChild(textArea);
+            }
+        });
+
+        // Bounding Box Functions
+        function displayBoundingBoxes(result) {
+            bboxContainer.classList.add('show');
+            
+            // Use preview image or preprocessed image
+            const sourceImage = (preprocessedImage.src && preprocessedContainer.classList.contains('show')) 
+                ? preprocessedImage 
+                : previewImage;
+            
+            // Set up image load handler before setting src
+            bboxImage.onload = () => {
+                setupCanvas();
+                renderBoundingBoxes(result.text_blocks || []);
+            };
+            
+            bboxImage.src = sourceImage.src;
+            
+            // If image already loaded
+            if (bboxImage.complete && bboxImage.naturalWidth > 0) {
+                setupCanvas();
+                renderBoundingBoxes(result.text_blocks || []);
+            }
+        }
+
+        function setupCanvas() {
+            const img = bboxImage;
+            const wrapper = imageWrapper;
+            
+            // Set canvas size to match displayed image size
+            const rect = wrapper.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            
+            bboxCanvas.width = imgRect.width;
+            bboxCanvas.height = imgRect.height;
+            bboxCanvas.style.width = imgRect.width + 'px';
+            bboxCanvas.style.height = imgRect.height + 'px';
+        }
+
+        function renderBoundingBoxes(textBlocks) {
+            const ctx = bboxCanvas.getContext('2d');
+            const img = bboxImage;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, bboxCanvas.width, bboxCanvas.height);
+            
+            if (!bboxesVisible) return;
+            
+            // Calculate scale factors
+            const scaleX = bboxCanvas.width / img.naturalWidth;
+            const scaleY = bboxCanvas.height / img.naturalHeight;
+            
+            // Colors for different blocks
+            const colors = [
+                'rgba(102, 126, 234, 0.3)', // Blue
+                'rgba(118, 75, 162, 0.3)',  // Purple
+                'rgba(72, 187, 120, 0.3)',  // Green
+                'rgba(237, 137, 54, 0.3)',  // Orange
+                'rgba(245, 101, 101, 0.3)', // Red
+            ];
+            
+            textBlocks.forEach((block, index) => {
+                if (!block.bbox) return;
+                
+                const bbox = block.bbox;
+                const color = colors[index % colors.length];
+                const borderColor = color.replace('0.3', '1');
+                
+                // Scale coordinates
+                const x1 = bbox.x1 * scaleX;
+                const y1 = bbox.y1 * scaleY;
+                const x2 = bbox.x2 * scaleX;
+                const y2 = bbox.y2 * scaleY;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                
+                // Draw bounding box
+                ctx.fillStyle = color;
+                ctx.fillRect(x1, y1, width, height);
+                
+                // Draw border
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x1, y1, width, height);
+                
+                // Draw text label
+                const text = block.text.substring(0, 30) + (block.text.length > 30 ? '...' : '');
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px Arial';
+                ctx.fillText(text, x1 + 5, y1 - 5);
+                
+                // Draw index number
+                ctx.fillStyle = borderColor;
+                ctx.fillRect(x1, y1, 25, 20);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(index + 1, x1 + 12.5, y1 + 14);
+                ctx.textAlign = 'left';
+            });
+            
+            // Add click handler
+            bboxCanvas.onclick = (e) => {
+                const rect = bboxCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Find clicked bounding box
+                const scaleX = bboxCanvas.width / img.naturalWidth;
+                const scaleY = bboxCanvas.height / img.naturalHeight;
+                
+                for (let i = 0; i < textBlocks.length; i++) {
+                    const block = textBlocks[i];
+                    if (!block.bbox) continue;
+                    
+                    const bbox = block.bbox;
+                    const x1 = bbox.x1 * scaleX;
+                    const y1 = bbox.y1 * scaleY;
+                    const x2 = bbox.x2 * scaleX;
+                    const y2 = bbox.y2 * scaleY;
+                    
+                    if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
+                        highlightBbox(i);
+                        enableEditMode(i);
+                        break;
+                    }
+                }
+            };
+        }
+
+        function highlightBbox(index) {
+            highlightedBboxIndex = index;
+            // Scroll to editable block
+            const editableBlock = document.querySelector(`[data-block-index="${index}"]`);
+            if (editableBlock) {
+                editableBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                editableBlock.classList.add('editing');
+                setTimeout(() => editableBlock.classList.remove('editing'), 2000);
+            }
+        }
+
+        // Toggle bounding boxes
+        toggleBboxesBtn.addEventListener('click', () => {
+            bboxesVisible = !bboxesVisible;
+            bboxCanvas.classList.toggle('hidden', !bboxesVisible);
+            toggleBboxesBtn.textContent = bboxesVisible ? 'Hide Boxes' : 'Show Boxes';
+            if (bboxesVisible && currentResult && currentResult.text_blocks) {
+                renderBoundingBoxes(currentResult.text_blocks);
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (bboxContainer.classList.contains('show')) {
+                setupCanvas();
+                if (currentResult && currentResult.text_blocks) {
+                    renderBoundingBoxes(currentResult.text_blocks);
+                }
+            }
+        });
+
+        // Editable Text Blocks Functions
+        function renderEditableBlocks(textBlocks) {
+            editableTextContainer.classList.add('show');
+            editableBlocks.innerHTML = '';
+            
+            if (!textBlocks || textBlocks.length === 0) {
+                editableBlocks.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">No text blocks available.</div>';
+                return;
+            }
+            
+            textBlocks.forEach((block, index) => {
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'editable-block';
+                blockDiv.setAttribute('data-block-index', index);
+                
+                const bboxInfo = block.bbox 
+                    ? `(${block.bbox.x1}, ${block.bbox.y1}) - (${block.bbox.x2}, ${block.bbox.y2})`
+                    : 'No bbox';
+                
+                blockDiv.innerHTML = `
+                    <div class="block-header">
+                        <div class="block-info">
+                            <span class="block-index">#${index + 1}</span>
+                            <span class="block-confidence">Confidence: ${(block.confidence * 100).toFixed(1)}%</span>
+                            <span class="block-bbox">${bboxInfo}</span>
+                        </div>
+                        <div class="block-actions">
+                            <button class="block-action-btn" onclick="enableEditMode(${index})">✏️ Edit</button>
+                        </div>
+                    </div>
+                    <div class="block-text" id="block-text-${index}">${escapeHtml(block.text)}</div>
+                `;
+                
+                editableBlocks.appendChild(blockDiv);
+            });
+        }
+
+        function enableEditMode(index) {
+            const blockTextDiv = document.getElementById(`block-text-${index}`);
+            if (!blockTextDiv) return;
+            
+            const currentText = editedTextBlocks[index].text;
+            const textarea = document.createElement('textarea');
+            textarea.value = currentText;
+            textarea.className = 'editing';
+            
+            const editControls = document.createElement('div');
+            editControls.className = 'edit-controls';
+            editControls.innerHTML = `
+                <button class="btn-primary" onclick="saveBlockEdit(${index})">Save</button>
+                <button class="btn-secondary" onclick="cancelBlockEdit(${index})">Cancel</button>
+            `;
+            
+            blockTextDiv.innerHTML = '';
+            blockTextDiv.appendChild(textarea);
+            blockTextDiv.appendChild(editControls);
+            
+            textarea.focus();
+            textarea.select();
+            
+            // Mark block as editing
+            const blockDiv = document.querySelector(`[data-block-index="${index}"]`);
+            if (blockDiv) {
+                blockDiv.classList.add('editing');
+            }
+        }
+
+        window.saveBlockEdit = function(index) {
+            const blockTextDiv = document.getElementById(`block-text-${index}`);
+            if (!blockTextDiv) return;
+            
+            const textarea = blockTextDiv.querySelector('textarea');
+            if (!textarea) return;
+            
+            const newText = textarea.value.trim();
+            editedTextBlocks[index].text = newText;
+            
+            // Update display
+            blockTextDiv.innerHTML = escapeHtml(newText);
+            
+            // Mark as edited
+            const blockDiv = document.querySelector(`[data-block-index="${index}"]`);
+            if (blockDiv) {
+                blockDiv.classList.remove('editing');
+                blockDiv.classList.add('edited');
+            }
+            
+            // Update current result
+            if (currentResult && currentResult.text_blocks) {
+                currentResult.text_blocks[index].text = newText;
+            }
+            
+            // Re-render bounding boxes if needed
+            if (bboxContainer.classList.contains('show') && bboxesVisible) {
+                renderBoundingBoxes(currentResult.text_blocks);
+            }
+        };
+
+        window.cancelBlockEdit = function(index) {
+            const blockTextDiv = document.getElementById(`block-text-${index}`);
+            if (!blockTextDiv) return;
+            
+            const originalText = editedTextBlocks[index].text;
+            blockTextDiv.innerHTML = escapeHtml(originalText);
+            
+            const blockDiv = document.querySelector(`[data-block-index="${index}"]`);
+            if (blockDiv) {
+                blockDiv.classList.remove('editing');
+            }
+        };
+
+        // Save all edits
+        saveEditsBtn.addEventListener('click', () => {
+            // Updates are already saved in real-time
+            alert('All changes have been saved!');
+        });
+
+        // Reset edits
+        resetEditsBtn.addEventListener('click', () => {
+            if (confirm('Reset all edits to original values?')) {
+                editedTextBlocks = JSON.parse(JSON.stringify(originalTextBlocks));
+                currentResult.text_blocks = JSON.parse(JSON.stringify(originalTextBlocks));
+                renderEditableBlocks(editedTextBlocks);
+                
+                // Remove edited class from all blocks
+                document.querySelectorAll('.editable-block').forEach(block => {
+                    block.classList.remove('edited');
+                });
+                
+                // Re-render bounding boxes
+                if (bboxContainer.classList.contains('show') && bboxesVisible) {
+                    renderBoundingBoxes(currentResult.text_blocks);
+                }
+            }
+        });
+
+        // Export JSON
+        exportJsonBtn.addEventListener('click', () => {
+            if (!currentResult) return;
+            
+            const exportData = {
+                ...currentResult,
+                text_blocks: editedTextBlocks
+            };
+            
+            const jsonStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ocr_result.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
+

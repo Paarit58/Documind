@@ -1,0 +1,69 @@
+# PaddleOCR-VL Engine Dependencies
+# ============================================================
+# This file contains dependencies required ONLY for the PaddleOCR-VL engine.
+# Install these separately if you want to use the PaddleOCR-VL engine.
+#
+# Installation Instructions:
+# 1. For CPU-only systems (recommended for this setup):
+#    pip install -r requirements-paddleocr.txt
+#
+# 2. For GPU systems (if you have CUDA):
+#    Replace paddlepaddle==3.2.1 with:
+#    pip install paddlepaddle-gpu==3.2.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+#    (Adjust CUDA version as needed)
+#
+# Note: safetensors is automatically installed as a dependency of paddleocr[doc-parser]
+# No special wheel installation is needed.
+#
+# Note: The main requirements.txt already includes httpx which is needed
+# for the semantic understanding step (Ollama integration).
+
+# ============================================================
+# Core PaddleOCR-VL Dependencies
+# ============================================================
+
+# PaddlePaddle Framework (CPU version)
+# For CPU-only systems
+paddlepaddle==3.2.1
+
+# PaddleOCR with document parser support
+# This includes the PaddleOCR-VL model and all necessary components
+paddleocr[doc-parser]>=2.9.0
+
+# Transformers library for element-level recognition
+# Required for element recognition mode (OCR, Table, Formula, Chart recognition)
+# Document parsing mode works without this, but element recognition requires it
+# Note: PaddleOCR-VL model specifies transformers_version: "4.55.0" in config.json
+# Using this exact version ensures compatibility and avoids rope_type KeyError
+transformers==4.55.0
+
+# PyTorch (CPU version) - required by transformers
+# For CPU-only systems
+torch>=2.0.0
+
+# ============================================================
+# Safetensors (Auto-installed)
+# ============================================================
+# safetensors is automatically installed as a dependency of paddleocr[doc-parser]
+# No manual installation needed. If you encounter issues, you can install it separately:
+# pip install safetensors>=0.4.0
+
+# ============================================================
+# Notes
+# ============================================================
+# - Pillow (PIL) is already included in main requirements.txt
+# - httpx is already included in main requirements.txt (for Ollama)
+# - This engine is optional - the app will work without it
+# - If PaddleOCR is not installed, the app will log a warning and continue
+#   with other available engines (e.g., Qwen3-VL)
+#
+# Modes:
+# - Document Parsing: Uses PaddleOCR library only (no transformers needed)
+# - Element Recognition: Requires transformers library for task-specific prompts
+#   (OCR:, Table Recognition:, Formula Recognition:, Chart Recognition:)
+#
+# Verification:
+# After installation, verify with:
+#   python -c "from paddleocr import PaddleOCRVL; print('PaddleOCR-VL installed successfully')"
+#   python -c "from transformers import AutoModelForCausalLM; print('Transformers installed successfully')"
+
