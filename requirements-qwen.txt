@@ -1,0 +1,79 @@
+# Qwen3-VL Engine Dependencies
+# ============================================================
+# This file contains dependencies required ONLY for the Qwen3-VL engine.
+# Install these separately if you want to use the Qwen3-VL engine.
+#
+# Installation Instructions:
+# 1. Install main requirements first:
+#    pip install -r requirements.txt
+#
+# 2. Install Qwen3-VL dependencies:
+#    pip install -r requirements-qwen.txt
+#
+# 3. Alternative: Install transformers from source (recommended for latest features):
+#    pip install git+https://github.com/huggingface/transformers
+#    pip install accelerate>=0.30.0 qwen-vl-utils[decord]==0.0.8 bitsandbytes>=0.41.0
+#
+# Note: The main requirements.txt already includes:
+# - torch>=2.6.0 (required by transformers)
+# - pillow>=10.0.0 (for image processing)
+# - httpx>=0.27.0 (for Ollama client in semantic understanding)
+
+# ============================================================
+# Core Qwen3-VL Dependencies
+# ============================================================
+
+# Transformers library (REQUIRED)
+# Qwen3-VL requires transformers>=4.56.0 for Qwen3VLForConditionalGeneration
+# IMPORTANT: This conflicts with PaddleOCR-VL which requires transformers==4.55.0
+# If you need both engines, use separate virtual environments or switch versions
+transformers>=4.56.0
+
+# Accelerate library for model loading and inference optimization
+accelerate>=0.30.0
+
+# Qwen Vision-Language utilities
+# Includes process_vision_info for image processing
+qwen-vl-utils[decord]==0.0.8
+# For non-Linux systems, use: qwen-vl-utils (without decord)
+
+# Bitsandbytes for quantization (optional but recommended for memory efficiency)
+# Useful for systems with limited RAM
+bitsandbytes>=0.41.0
+
+# ============================================================
+# Optional Dependencies
+# ============================================================
+
+# Flash Attention (CUDA only, optional)
+# Install separately if using CUDA and want faster inference:
+# pip install flash-attn==2.7.3 --no-build-isolation
+
+# ============================================================
+# Notes
+# ============================================================
+# - PyTorch is already included in main requirements.txt (torch>=2.6.0)
+# - The Qwen3-VL-2B-Instruct model (~4.27GB) will be downloaded automatically
+#   from HuggingFace on first use
+# - This engine is CPU-optimized (float32) and suitable for systems with limited RAM
+# - Model size: ~4.27GB (2B parameters)
+# - Default device: CPU (optimized for local testing)
+#
+# Transformers Version Conflict:
+# - Qwen3-VL requires transformers>=4.56.0
+# - PaddleOCR-VL requires transformers==4.55.0
+# - Solution: Use separate virtual environments or install one at a time
+#
+# Verification:
+# After installation, verify with:
+#   python -c "from transformers import Qwen3VLForConditionalGeneration; print('Qwen3-VL dependencies installed successfully')"
+#   python -c "from qwen_vl_utils import process_vision_info; print('Qwen VL utils installed successfully')"
+#
+# Model Information:
+# - Model ID: Qwen/Qwen3-VL-2B-Instruct
+# - HuggingFace: https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
+# - Model size: ~4.27GB
+# - Parameters: 2B
+# - Precision: Float32 (CPU-optimized)
+
+

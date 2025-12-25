@@ -411,6 +411,163 @@ class PreprocessingConfig(BaseModel):
         description="Output method: 'otsu', 'sauvola', or 'both' (show both, use sauvola as final)"
     )
     
+    # Layer 5: Structural Analysis
+    enable_structural_analysis: bool = Field(
+        default=True,  # Start disabled for testing
+        description="Enable Structural Analysis layer (form line detection and removal)"
+    )
+    # Phase 1: Kernel Definition
+    structural_kernel_ratio: float = Field(
+        default=40.0,
+        ge=20.0,
+        le=100.0,
+        description="Kernel size ratio (1/N of image dimension, e.g., 40 = 1/40th)"
+    )
+    structural_kernel_min_size: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+        description="Minimum kernel size in pixels (safety limit to avoid too-small kernels)"
+    )
+    structural_kernel_max_size: int = Field(
+        default=50,
+        ge=10,
+        le=200,
+        description="Maximum kernel size in pixels (safety limit to avoid too-large kernels)"
+    )
+    
+    # Phase 3: Grid Intersection & Refinement
+    structural_min_line_length_ratio: float = Field(
+        default=0.05,
+        ge=0.01,
+        le=0.2,
+        description="Minimum line length ratio (relative to image dimension) to keep"
+    )
+    structural_intersection_threshold: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Minimum intersection size in pixels to consider as grid corner"
+    )
+    
+    # Phase 3: Enhanced Grid Analysis
+    structural_enable_junction_map: bool = Field(
+        default=True,
+        description="Enable junction map (wireframe) visualization"
+    )
+    structural_enable_comb_field_detection: bool = Field(
+        default=True,
+        description="Enable comb field detection from intersection points"
+    )
+    structural_intersection_cluster_threshold: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Distance threshold for clustering nearby intersections"
+    )
+    structural_comb_field_min_lines: int = Field(
+        default=3,
+        ge=2,
+        le=20,
+        description="Minimum number of vertical lines for comb field detection"
+    )
+    structural_comb_field_pattern_detection: bool = Field(
+        default=True,
+        description="Enable enhanced pattern-based comb field detection (more accurate than intersection-based)"
+    )
+    structural_comb_field_vertical_tolerance: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Tolerance in pixels for vertical line detection near horizontal lines in comb fields"
+    )
+    structural_comb_field_min_vertical_coverage: float = Field(
+        default=0.6,
+        ge=0.3,
+        le=1.0,
+        description="Minimum percentage of height that vertical lines must cover to be considered part of comb field"
+    )
+    structural_comb_field_max_line_spacing_ratio: float = Field(
+        default=0.1,
+        ge=0.01,
+        le=0.5,
+        description="Maximum spacing between vertical lines as ratio of image width (for pattern validation)"
+    )
+    structural_comb_field_extraction_padding: int = Field(
+        default=3,
+        ge=0,
+        le=10,
+        description="Padding in pixels to add around comb field bounding boxes for complete line extraction"
+    )
+    structural_segment_context_radius: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Radius for context-aware segment filtering (pixels)"
+    )
+    
+    # Phase 4: Text Preservation
+    structural_enable_text_preservation: bool = Field(
+        default=True,
+        description="Enable intelligent text preservation (distinguish text from lines)"
+    )
+    structural_text_aspect_ratio_min: float = Field(
+        default=0.2,
+        ge=0.1,
+        le=1.0,
+        description="Minimum aspect ratio for text components (width/height or height/width)"
+    )
+    structural_text_aspect_ratio_max: float = Field(
+        default=5.0,
+        ge=2.0,
+        le=10.0,
+        description="Maximum aspect ratio for text components"
+    )
+    structural_text_min_area: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Minimum area in pixels for text components"
+    )
+    structural_text_max_area_ratio: float = Field(
+        default=0.1,
+        ge=0.01,
+        le=0.5,
+        description="Maximum area ratio (relative to image) for text components"
+    )
+    structural_text_min_solidity: float = Field(
+        default=0.3,
+        ge=0.1,
+        le=1.0,
+        description="Minimum solidity (filledness) for text components"
+    )
+    
+    # Phase 5: Final Mask Generation (Clean Zone Map)
+    structural_mask_dilation_kernel_size: int = Field(
+        default=3,
+        ge=3,
+        le=7,
+        description="Kernel size for mask dilation (must be odd, typically 3 or 5)"
+    )
+    structural_mask_dilation_iterations: int = Field(
+        default=1,
+        ge=1,
+        le=3,
+        description="Number of dilation iterations (1 = ~1 pixel, 2 = ~2 pixels)"
+    )
+    structural_mask_dilation_pixels: int = Field(
+        default=1,
+        ge=1,
+        le=2,
+        description="Target dilation in pixels (for documentation/clarity, typically 1-2 pixels)"
+    )
+    
+    # Comb Field Removal Mode
+    structural_comb_field_removal_only: bool = Field(
+        default=True,
+        description="Remove only comb fields (checkbox fields), preserve other form lines. Useful for PaddleOCR-VL optimization."
+    )
+    
     model_config = {"frozen": True}
 
 

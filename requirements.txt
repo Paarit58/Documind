@@ -33,13 +33,15 @@ torchvision>=0.19.0
 # tokenizers==0.20.3
 # safetensors>=0.4.0
 
-# Qwen3-VL dependencies
-# Note: Qwen3-VL requires latest transformers from source
-# Install with: pip install git+https://github.com/huggingface/transformers
-accelerate>=0.30.0
-qwen-vl-utils[decord]==0.0.8
-# For non-Linux systems, use: qwen-vl-utils (without decord)
-bitsandbytes>=0.41.0
+# Qwen3-VL Dependencies (Optional - Install separately)
+# Qwen3-VL engine is the default. To use it, install dependencies from:
+#   pip install -r requirements-qwen.txt
+#
+# See requirements-qwen.txt for detailed installation instructions.
+# IMPORTANT: Transformers version conflict
+# - Qwen3-VL requires transformers>=4.56.0 (see requirements-qwen.txt)
+# - PaddleOCR-VL requires transformers==4.55.0 (see requirements-paddleocr.txt)
+# - If you need both engines, use separate virtual environments or switch versions
 
 # DeepSeek-OCR dependencies
 einops>=0.7.0
@@ -61,13 +63,18 @@ scikit-image>=0.21.0
 # flash-attn==2.7.3
 
 # ============================================================
-# PaddleOCR-VL Dependencies (Optional - Install separately)
+# Engine-Specific Dependencies (Optional - Install separately)
 # ============================================================
-# PaddleOCR-VL engine is optional. To use it, install dependencies from:
-#   pip install -r requirements-paddleocr.txt
+# Qwen3-VL engine (default):
+#   pip install -r requirements-qwen.txt
+#   See requirements-qwen.txt for detailed installation instructions.
 #
-# See requirements-paddleocr.txt for detailed installation instructions.
-# The app will work without PaddleOCR-VL (using Qwen3-VL as default).
+# PaddleOCR-VL engine (optional):
+#   pip install -r requirements-paddleocr.txt
+#   See requirements-paddleocr.txt for detailed installation instructions.
+#
+# Note: The app requires at least one engine to be installed.
+# If no engines are installed, the app will fail to start.
 
 # ============================================================
 # Development Dependencies (optional)

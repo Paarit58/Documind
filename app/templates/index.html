@@ -384,6 +384,105 @@
             text-decoration: underline;
         }
 
+        .ocr-summary-container {
+            margin-top: 30px;
+            display: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .ocr-summary-container.show {
+            display: block;
+        }
+
+        .ocr-summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .ocr-summary-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: white;
+        }
+
+        .ocr-summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .ocr-stat-item {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .ocr-stat-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ocr-stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        .ocr-summary-preview {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            backdrop-filter: blur(10px);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .ocr-summary-preview-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            opacity: 0.95;
+        }
+
+        .ocr-summary-preview-text {
+            font-size: 0.95em;
+            line-height: 1.6;
+            opacity: 0.9;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .ocr-summary-preview::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .ocr-summary-preview::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .ocr-summary-preview::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .ocr-summary-preview::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
         .preprocessed-container {
             margin-top: 20px;
             display: none;
@@ -810,9 +909,8 @@
             <div class="form-group">
                 <label for="engine">OCR Engine:</label>
                 <select id="engine">
-                    <option value="paddleocr_vl">PaddleOCR-VL (Default)</option>
-                    <!-- Temporarily disabled - Qwen3VLForConditionalGeneration not available in transformers==4.55.0 -->
-                    <!-- <option value="qwen_vl">Qwen3-VL-2B</option> -->
+                    <option value="qwen_vl">Qwen3-VL-2B (Default)</option>
+                    <option value="paddleocr_vl">PaddleOCR-VL</option>
                 </select>
             </div>
             <div class="form-group" id="paddleocrModeGroup" style="display: none;">
@@ -859,6 +957,17 @@
         </div>
 
         <div class="error" id="error"></div>
+
+        <div class="ocr-summary-container" id="ocrSummaryContainer" style="display: none;">
+            <div class="ocr-summary-header">
+                <div class="ocr-summary-title">📊 OCR Results Summary</div>
+            </div>
+            <div class="ocr-summary-stats" id="ocrSummaryStats"></div>
+            <div class="ocr-summary-preview" id="ocrSummaryPreview" style="display: none;">
+                <div class="ocr-summary-preview-title">📝 Extracted Text Preview</div>
+                <div class="ocr-summary-preview-text" id="ocrSummaryPreviewText"></div>
+            </div>
+        </div>
 
         <div class="preprocessed-container" id="preprocessedContainer" style="display: none;">
             <div class="results-header">
@@ -938,6 +1047,10 @@
         const metadata = document.getElementById('metadata');
         const configToggle = document.getElementById('configToggle');
         const configSection = document.getElementById('configSection');
+        const ocrSummaryContainer = document.getElementById('ocrSummaryContainer');
+        const ocrSummaryStats = document.getElementById('ocrSummaryStats');
+        const ocrSummaryPreview = document.getElementById('ocrSummaryPreview');
+        const ocrSummaryPreviewText = document.getElementById('ocrSummaryPreviewText');
         const preprocessedContainer = document.getElementById('preprocessedContainer');
         const preprocessedImage = document.getElementById('preprocessedImage');
         const analysisInfo = document.getElementById('analysisInfo');
@@ -1143,6 +1256,9 @@
 
         // Display results
         function displayResults(result) {
+            // Display OCR Summary at the top
+            displayOCRSummary(result);
+            
             // Display step results (new structure with step_results)
             if (result.raw_output && result.raw_output.step_results) {
                 const stepResults = result.raw_output.step_results;
@@ -1702,6 +1818,501 @@
                                 phaseHTML += '</div>';
                             }
                             
+                            // Layer 5: Structural Analysis (Phase 1: Kernel Definition)
+                            if (preprocessResult.phase_outputs.layer5_structural_analysis) {
+                                const layer5 = preprocessResult.phase_outputs.layer5_structural_analysis;
+                                if (layer5.phase1_kernel_definition) {
+                                    const phase1 = layer5.phase1_kernel_definition;
+                                    phaseHTML += '<div class="phase-section">';
+                                    phaseHTML += '<div class="phase-title">Layer 5: Structural Analysis - Phase 1: Kernel Definition</div>';
+                                    
+                                    // Kernel Info Section
+                                    if (phase1.kernel_info) {
+                                        const kernelInfo = phase1.kernel_info;
+                                        phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Kernel Configuration</div>';
+                                        
+                                        phaseHTML += '<div class="phase-metadata">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Image Dimensions:</div>';
+                                        phaseHTML += `<div>Width: ${kernelInfo.image_width}px | Height: ${kernelInfo.image_height}px</div>`;
+                                        phaseHTML += '<div style="margin-top: 10px; font-weight: 600; margin-bottom: 5px;">Kernel Parameters:</div>';
+                                        phaseHTML += `<div>Kernel Ratio: 1/${kernelInfo.kernel_ratio} (${(1/kernelInfo.kernel_ratio * 100).toFixed(2)}% of image dimension)</div>`;
+                                        phaseHTML += `<div>Horizontal Kernel Size: ${kernelInfo.horizontal_kernel_size[0]} × ${kernelInfo.horizontal_kernel_size[1]} (width: ${kernelInfo.horizontal_kernel_width}px)</div>`;
+                                        phaseHTML += `<div>Vertical Kernel Size: ${kernelInfo.vertical_kernel_size[0]} × ${kernelInfo.vertical_kernel_size[1]} (height: ${kernelInfo.vertical_kernel_height}px)</div>`;
+                                        phaseHTML += '</div>';
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Horizontal Kernel Visualization
+                                    if (phase1.horizontal_kernel_visualization) {
+                                        phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Horizontal Kernel</div>';
+                                        phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">This kernel detects horizontal form lines (wide and short)</div>';
+                                        phaseHTML += `<img src="${phase1.horizontal_kernel_visualization}" class="phase-image" alt="Horizontal Kernel" onerror="console.error('Failed to load horizontal kernel visualization')" style="max-width: 100%; border: 2px solid #667eea; background: #f8f9ff;">`;
+                                        if (phase1.kernel_info) {
+                                            phaseHTML += `<div class="phase-metadata">Size: ${phase1.kernel_info.horizontal_kernel_size[0]} × ${phase1.kernel_info.horizontal_kernel_size[1]} pixels</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Vertical Kernel Visualization
+                                    if (phase1.vertical_kernel_visualization) {
+                                        phaseHTML += '<div style="margin-bottom: 20px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Vertical Kernel</div>';
+                                        phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">This kernel detects vertical form lines (tall and narrow)</div>';
+                                        phaseHTML += `<img src="${phase1.vertical_kernel_visualization}" class="phase-image" alt="Vertical Kernel" onerror="console.error('Failed to load vertical kernel visualization')" style="max-width: 100%; border: 2px solid #667eea; background: #f8f9ff;">`;
+                                        if (phase1.kernel_info) {
+                                            phaseHTML += `<div class="phase-metadata">Size: ${phase1.kernel_info.vertical_kernel_size[0]} × ${phase1.kernel_info.vertical_kernel_size[1]} pixels</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    // Explanation
+                                    phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">About Kernel Definition:</div>';
+                                    phaseHTML += '<div style="color: #666; font-size: 0.9em; line-height: 1.6;">';
+                                    phaseHTML += 'Kernels are dynamically scaled based on image dimensions to detect form lines. ';
+                                    phaseHTML += 'The horizontal kernel is wide and short (detects horizontal lines), while the vertical kernel is tall and narrow (detects vertical lines). ';
+                                    phaseHTML += 'These kernels will be used in the next phase for morphological operations to extract form structure.';
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Layer 5: Structural Analysis - Phase 2: Morphological Extraction
+                                if (layer5.phase2_morphological_extraction) {
+                                const phase2 = layer5.phase2_morphological_extraction;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 5: Structural Analysis - Phase 2: Morphological Extraction</div>';
+                                
+                                // Input Binary Image
+                                if (phase2.input_binary) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Input Binary Image</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Binary image used for morphological operations</div>';
+                                    phaseHTML += `<img src="${phase2.input_binary.image}" class="phase-image" alt="Input Binary" onerror="console.error('Failed to load input binary image')">`;
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Horizontal Lines Extraction
+                                if (phase2.horizontal_erosion || phase2.horizontal_lines_mask) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Horizontal Lines Extraction</div>';
+                                    
+                                    if (phase2.horizontal_erosion) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">After Erosion</div>';
+                                        phaseHTML += '<div style="margin-bottom: 8px; color: #666; font-size: 0.85em;">Small shapes removed, only long horizontal lines survive</div>';
+                                        phaseHTML += `<img src="${phase2.horizontal_erosion.image}" class="phase-image" alt="Horizontal Erosion" onerror="console.error('Failed to load horizontal erosion image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    if (phase2.horizontal_lines_mask) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Final Horizontal Lines Mask</div>';
+                                        phaseHTML += '<div style="margin-bottom: 8px; color: #666; font-size: 0.85em;">After dilation: horizontal form lines restored</div>';
+                                        phaseHTML += `<img src="${phase2.horizontal_lines_mask.image}" class="phase-image" alt="Horizontal Mask" onerror="console.error('Failed to load horizontal mask image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Vertical Lines Extraction
+                                if (phase2.vertical_erosion || phase2.vertical_lines_mask) {
+                                    phaseHTML += '<div style="margin-bottom: 20px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Vertical Lines Extraction</div>';
+                                    
+                                    if (phase2.vertical_erosion) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">After Erosion</div>';
+                                        phaseHTML += '<div style="margin-bottom: 8px; color: #666; font-size: 0.85em;">Small shapes removed, only tall vertical lines survive</div>';
+                                        phaseHTML += `<img src="${phase2.vertical_erosion.image}" class="phase-image" alt="Vertical Erosion" onerror="console.error('Failed to load vertical erosion image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    if (phase2.vertical_lines_mask) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Final Vertical Lines Mask</div>';
+                                        phaseHTML += '<div style="margin-bottom: 8px; color: #666; font-size: 0.85em;">After dilation: vertical form lines restored</div>';
+                                        phaseHTML += `<img src="${phase2.vertical_lines_mask.image}" class="phase-image" alt="Vertical Mask" onerror="console.error('Failed to load vertical mask image')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Statistics
+                                if (phase2.statistics) {
+                                    const stats = phase2.statistics;
+                                    phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">Extraction Statistics:</div>';
+                                    phaseHTML += '<div style="color: #666; font-size: 0.9em;">';
+                                    if (stats.horizontal_lines_pixels !== undefined) {
+                                        const hPercent = stats.horizontal_lines_percentage !== undefined ? ` (${stats.horizontal_lines_percentage.toFixed(2)}%)` : '';
+                                        phaseHTML += `<div>Horizontal Lines: ${stats.horizontal_lines_pixels.toLocaleString()} pixels${hPercent}</div>`;
+                                    }
+                                    if (stats.vertical_lines_pixels !== undefined) {
+                                        const vPercent = stats.vertical_lines_percentage !== undefined ? ` (${stats.vertical_lines_percentage.toFixed(2)}%)` : '';
+                                        phaseHTML += `<div>Vertical Lines: ${stats.vertical_lines_pixels.toLocaleString()} pixels${vPercent}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Explanation
+                                phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #f0f2ff; border-radius: 8px; border-left: 4px solid #667eea;">';
+                                phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">About Morphological Extraction:</div>';
+                                phaseHTML += '<div style="color: #666; font-size: 0.9em; line-height: 1.6;">';
+                                phaseHTML += '<strong>Erosion:</strong> Removes small shapes (letters) that are shorter than the kernel. Only long form lines survive.<br>';
+                                phaseHTML += '<strong>Dilation:</strong> Restores the survived lines to their original thickness.<br>';
+                                phaseHTML += '<strong>Result:</strong> Two separate masks showing only horizontal and vertical form lines, ready for grid intersection in Phase 3.';
+                                phaseHTML += '</div>';
+                                phaseHTML += '</div>';
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            // Layer 5: Structural Analysis - Phase 3: Grid Intersection & Refinement
+                            if (layer5.phase3_grid_refinement) {
+                                const phase3 = layer5.phase3_grid_refinement;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 5: Structural Analysis - Phase 3: Grid Intersection & Refinement</div>';
+                                
+                                // Junction Map (Wireframe)
+                                if (phase3.junction_map) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Junction Map (Wireframe)</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Complete form structure: <span style="color: #ff0000;">Red=Vertical</span>, <span style="color: #0000ff;">Blue=Horizontal</span>, <span style="color: #00ff00;">Green=Intersections</span></div>';
+                                    phaseHTML += `<img src="${phase3.junction_map.image}" class="phase-image" alt="Junction Map" onerror="console.error('Failed to load junction map image')">`;
+                                    if (phase3.junction_map.coverage_percentage !== undefined) {
+                                        const pixels = phase3.junction_map.pixels !== undefined ? phase3.junction_map.pixels.toLocaleString() : 'N/A';
+                                        phaseHTML += `<div class="phase-metadata">Coverage: ${phase3.junction_map.coverage_percentage.toFixed(2)}% (${pixels} pixels)</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Enhanced Intersections
+                                if (phase3.intersections) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Grid Intersections (Enhanced)</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Grid corners and intersection points with type classification</div>';
+                                    phaseHTML += `<img src="${phase3.intersections.image}" class="phase-image" alt="Intersections" onerror="console.error('Failed to load intersections image')">`;
+                                    if (phase3.intersections.count !== undefined) {
+                                        if (phase3.intersections.count !== undefined) {
+                                            phaseHTML += `<div class="phase-metadata">Intersection Points: ${phase3.intersections.count.toLocaleString()}</div>`;
+                                        }
+                                    }
+                                    if (phase3.intersections.types) {
+                                        phaseHTML += '<div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px; color: #333;">Intersection Types:</div>';
+                                        for (const [type, count] of Object.entries(phase3.intersections.types)) {
+                                            phaseHTML += `<div style="color: #666; font-size: 0.9em;">${type}: ${count}</div>`;
+                                        }
+                                        phaseHTML += '</div>';
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Comb Fields Detection
+                                if (phase3.comb_fields) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Comb Fields Detection</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Detected comb fields (series of vertical lines between horizontal lines) - shown in yellow</div>';
+                                    phaseHTML += `<img src="${phase3.comb_fields.image}" class="phase-image" alt="Comb Fields" onerror="console.error('Failed to load comb fields image')">`;
+                                    if (phase3.comb_fields.count !== undefined) {
+                                        phaseHTML += `<div class="phase-metadata">Comb Fields Detected: ${phase3.comb_fields.count}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Detected Boxes
+                                if (phase3.detected_boxes) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Detected Boxes/Fields</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Rectangular regions identified from intersection points - shown in cyan</div>';
+                                    phaseHTML += `<img src="${phase3.detected_boxes.image}" class="phase-image" alt="Detected Boxes" onerror="console.error('Failed to load detected boxes image')">`;
+                                    if (phase3.detected_boxes.count !== undefined) {
+                                        phaseHTML += `<div class="phase-metadata">Boxes Detected: ${phase3.detected_boxes.count}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Refined Masks
+                                if (phase3.refined_horizontal_mask || phase3.refined_vertical_mask) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Refined Masks (After Filtering Short Segments)</div>';
+                                    
+                                    if (phase3.refined_horizontal_mask) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Refined Horizontal Mask</div>';
+                                        phaseHTML += '<div style="margin-bottom: 8px; color: #666; font-size: 0.85em;">Short segments filtered out, only long horizontal lines remain</div>';
+                                        phaseHTML += `<img src="${phase3.refined_horizontal_mask.image}" class="phase-image" alt="Refined Horizontal Mask" onerror="console.error('Failed to load refined horizontal mask')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    if (phase3.refined_vertical_mask) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Refined Vertical Mask</div>';
+                                        phaseHTML += '<div style="margin-bottom: 8px; color: #666; font-size: 0.85em;">Short segments filtered out, only tall vertical lines remain</div>';
+                                        phaseHTML += `<img src="${phase3.refined_vertical_mask.image}" class="phase-image" alt="Refined Vertical Mask" onerror="console.error('Failed to load refined vertical mask')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Enhanced Statistics
+                                if (phase3.statistics) {
+                                    const stats = phase3.statistics;
+                                    phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">Enhanced Refinement Statistics:</div>';
+                                    phaseHTML += '<div style="color: #666; font-size: 0.9em;">';
+                                    if (stats.horizontal_pixels_before !== undefined || stats.horizontal_pixels_after !== undefined) {
+                                        phaseHTML += '<div style="font-weight: 600; margin-top: 10px; margin-bottom: 5px;">Line Filtering:</div>';
+                                        if (stats.horizontal_pixels_before !== undefined && stats.horizontal_pixels_after !== undefined) {
+                                            const hFiltered = stats.horizontal_filtered_segments !== undefined ? ` (${stats.horizontal_filtered_segments} segments filtered)` : '';
+                                            phaseHTML += `<div>Horizontal: ${stats.horizontal_pixels_before.toLocaleString()} → ${stats.horizontal_pixels_after.toLocaleString()} pixels${hFiltered}</div>`;
+                                        }
+                                        if (stats.vertical_pixels_before !== undefined && stats.vertical_pixels_after !== undefined) {
+                                            const vFiltered = stats.vertical_filtered_segments !== undefined ? ` (${stats.vertical_filtered_segments} segments filtered)` : '';
+                                            phaseHTML += `<div>Vertical: ${stats.vertical_pixels_before.toLocaleString()} → ${stats.vertical_pixels_after.toLocaleString()} pixels${vFiltered}</div>`;
+                                        }
+                                    }
+                                    if (stats.min_horizontal_length !== undefined) {
+                                        phaseHTML += `<div>Min Horizontal Length: ${stats.min_horizontal_length}px</div>`;
+                                    }
+                                    if (stats.min_vertical_length !== undefined) {
+                                        phaseHTML += `<div>Min Vertical Length: ${stats.min_vertical_length}px</div>`;
+                                    }
+                                    if (stats.intersection_count !== undefined) {
+                                        phaseHTML += '<div style="font-weight: 600; margin-top: 10px; margin-bottom: 5px;">Grid Analysis:</div>';
+                                        phaseHTML += `<div>Intersection Points: ${stats.intersection_count.toLocaleString()}</div>`;
+                                    }
+                                    if (stats.comb_fields_count !== undefined) {
+                                        phaseHTML += `<div>Comb Fields: ${stats.comb_fields_count}</div>`;
+                                    }
+                                    if (stats.detected_boxes_count !== undefined) {
+                                        phaseHTML += `<div>Detected Boxes: ${stats.detected_boxes_count}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Enhanced Explanation
+                                phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">';
+                                phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">About Enhanced Grid Refinement:</div>';
+                                phaseHTML += '<div style="color: #666; font-size: 0.9em; line-height: 1.6;">';
+                                phaseHTML += '<strong>Junction Map:</strong> Complete wireframe showing form structure (Blue=Horizontal, Red=Vertical, Green=Intersections).<br>';
+                                phaseHTML += '<strong>Enhanced Intersection Detection:</strong> Finds and classifies intersection types (corners, T-junctions, crosses, plus signs).<br>';
+                                phaseHTML += '<strong>Comb Field Detection:</strong> Identifies series of vertical lines between horizontal lines (vital for form field identification).<br>';
+                                phaseHTML += '<strong>Context-Aware Filtering:</strong> Preserves short segments near intersections while removing isolated short segments.<br>';
+                                phaseHTML += '<strong>Box Identification:</strong> Detects rectangular regions from intersection patterns.<br>';
+                                phaseHTML += '<strong>Result:</strong> Refined masks with complete form structure analysis, ready for text preservation in Phase 4.';
+                                phaseHTML += '</div>';
+                                phaseHTML += '</div>';
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            // Layer 5: Structural Analysis - Phase 4: Intelligent Mask Generation
+                            if (layer5.phase4_intelligent_mask) {
+                                const phase4 = layer5.phase4_intelligent_mask;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 5: Structural Analysis - Phase 4: Intelligent Mask Generation with Text Preservation</div>';
+                                
+                                // Text Components
+                                if (phase4.text_components) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Detected Text Components</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Text components identified and preserved (shown in green)</div>';
+                                    phaseHTML += `<img src="${phase4.text_components.image}" class="phase-image" alt="Text Components" onerror="console.error('Failed to load text components image')">`;
+                                    if (phase4.text_components.count !== undefined) {
+                                        phaseHTML += `<div class="phase-metadata">Text Components: ${phase4.text_components.count.toLocaleString()}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Initial Mask (before dilation)
+                                if (phase4.initial_mask) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Initial Removal Mask (Before Dilation)</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Mask showing only structural lines (text excluded) - Note: Dilation applied in Phase 5</div>';
+                                    phaseHTML += `<img src="${phase4.initial_mask.image}" class="phase-image" alt="Initial Mask" onerror="console.error('Failed to load initial mask image')">`;
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Before/After Comparison
+                                if (phase4.before_after) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Before / After Comparison</div>';
+                                    phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Left: Original | Right: After Line Removal (Text Preserved)</div>';
+                                    phaseHTML += `<img src="${phase4.before_after.image}" class="phase-image" alt="Before After" onerror="console.error('Failed to load before/after image')">`;
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Statistics
+                                if (phase4.statistics) {
+                                    const stats = phase4.statistics;
+                                    phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">Text Preservation Statistics:</div>';
+                                    phaseHTML += '<div style="color: #666; font-size: 0.9em;">';
+                                    if (stats.text_components_count !== undefined) {
+                                        phaseHTML += `<div>Text Components Preserved: ${stats.text_components_count.toLocaleString()}</div>`;
+                                    }
+                                    if (stats.text_pixels !== undefined) {
+                                        phaseHTML += `<div>Text Pixels Preserved: ${stats.text_pixels.toLocaleString()}</div>`;
+                                    }
+                                    if (stats.line_pixels_detected !== undefined) {
+                                        phaseHTML += `<div>Line Pixels Detected: ${stats.line_pixels_detected.toLocaleString()}</div>`;
+                                    }
+                                    if (stats.text_preservation_enabled !== undefined) {
+                                        phaseHTML += `<div>Text Preservation: ${stats.text_preservation_enabled ? 'Enabled' : 'Disabled'}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Explanation
+                                phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #0dcaf0;">';
+                                phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">About Intelligent Mask Generation:</div>';
+                                phaseHTML += '<div style="color: #666; font-size: 0.9em; line-height: 1.6;">';
+                                phaseHTML += '<strong>Text Detection:</strong> Uses connected component analysis to identify text based on aspect ratio, area, and solidity.<br>';
+                                phaseHTML += '<strong>Text Preservation:</strong> Excludes text components from removal mask to prevent data loss.<br>';
+                                phaseHTML += '<strong>Intelligent Removal:</strong> Only removes structural form lines while preserving all text content, including characters with vertical/horizontal strokes (1, F, E, etc.).';
+                                phaseHTML += '</div>';
+                                phaseHTML += '</div>';
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            // Layer 5: Structural Analysis - Phase 5: Final Mask Generation (Clean Zone Map)
+                            if (layer5.phase5_final_mask_generation) {
+                                const phase5 = layer5.phase5_final_mask_generation;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Layer 5: Structural Analysis - Phase 5: Final Mask Generation (Clean Zone Map)</div>';
+                                
+                                // Clean Zone Mask
+                                if (phase5.clean_zone_mask) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Clean Zone Map (Final Unified Binary Mask)</div>';
+                                    if (phase5.clean_zone_mask.description) {
+                                        phaseHTML += `<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">${phase5.clean_zone_mask.description}</div>`;
+                                    } else {
+                                        phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Final unified binary mask representing everything that is NOT data - the "Search and Destroy" map</div>';
+                                    }
+                                    phaseHTML += `<img src="${phase5.clean_zone_mask.image}" class="phase-image" alt="Clean Zone Map" onerror="console.error('Failed to load clean zone mask image')">`;
+                                    if (phase5.clean_zone_mask.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${phase5.clean_zone_mask.size[0]} × ${phase5.clean_zone_mask.size[1]}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Clean Zone Overlay
+                                if (phase5.clean_zone_overlay) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Clean Zone Map Overlay</div>';
+                                    if (phase5.clean_zone_overlay.description) {
+                                        phaseHTML += `<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">${phase5.clean_zone_overlay.description}</div>`;
+                                    } else {
+                                        phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Clean Zone Map overlayed on original image (red = areas to be removed)</div>';
+                                    }
+                                    phaseHTML += `<img src="${phase5.clean_zone_overlay.image}" class="phase-image" alt="Clean Zone Overlay" onerror="console.error('Failed to load clean zone overlay image')">`;
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Dilation Comparison
+                                if (phase5.dilation_comparison) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Dilation Effect</div>';
+                                    if (phase5.dilation_comparison.description) {
+                                        phaseHTML += `<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">${phase5.dilation_comparison.description}</div>`;
+                                    } else {
+                                        phaseHTML += '<div style="margin-bottom: 10px; color: #666; font-size: 0.9em;">Before (left) and after (right) dilation - lines are thickened to ensure complete removal</div>';
+                                    }
+                                    phaseHTML += `<img src="${phase5.dilation_comparison.image}" class="phase-image" alt="Dilation Comparison" onerror="console.error('Failed to load dilation comparison image')">`;
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Statistics
+                                if (phase5.statistics) {
+                                    const stats = phase5.statistics;
+                                    phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">Final Mask Statistics:</div>';
+                                    phaseHTML += '<div style="color: #666; font-size: 0.9em;">';
+                                    if (stats.removal_mode !== undefined) {
+                                        const modeLabel = stats.removal_mode === 'comb_fields_only' ? 'Comb Fields Only' : 'Full (All Lines)';
+                                        const modeColor = stats.removal_mode === 'comb_fields_only' ? '#28a745' : '#dc3545';
+                                        phaseHTML += `<div style="font-weight: 600; margin-bottom: 8px; color: ${modeColor}; font-size: 1em;">Removal Mode: ${modeLabel}</div>`;
+                                    }
+                                    if (stats.mask_pixels !== undefined) {
+                                        phaseHTML += `<div>Mask Pixels: ${stats.mask_pixels.toLocaleString()}</div>`;
+                                    }
+                                    // Comb field removal statistics
+                                    if (stats.removal_mode === 'comb_fields_only') {
+                                        if (stats.comb_fields_processed !== undefined) {
+                                            phaseHTML += `<div style="font-weight: 600; margin-top: 10px; margin-bottom: 5px;">Comb Field Removal:</div>`;
+                                            phaseHTML += `<div>Comb Fields Processed: ${stats.comb_fields_processed}</div>`;
+                                        }
+                                    }
+                                    if (stats.mask_coverage_percentage !== undefined) {
+                                        phaseHTML += `<div>Mask Coverage: ${stats.mask_coverage_percentage.toFixed(2)}%</div>`;
+                                    }
+                                    if (stats.before_dilation_pixels !== undefined && stats.after_dilation_pixels !== undefined) {
+                                        phaseHTML += '<div style="font-weight: 600; margin-top: 10px; margin-bottom: 5px;">Dilation Effect:</div>';
+                                        phaseHTML += `<div>Before Dilation: ${stats.before_dilation_pixels.toLocaleString()} pixels</div>`;
+                                        phaseHTML += `<div>After Dilation: ${stats.after_dilation_pixels.toLocaleString()} pixels</div>`;
+                                        if (stats.dilation_increase_pixels !== undefined) {
+                                            phaseHTML += `<div>Increase: ${stats.dilation_increase_pixels.toLocaleString()} pixels`;
+                                            if (stats.dilation_increase_percentage !== undefined) {
+                                                phaseHTML += ` (${stats.dilation_increase_percentage.toFixed(2)}%)`;
+                                            }
+                                            phaseHTML += '</div>';
+                                        }
+                                    }
+                                    if (stats.dilation_kernel_size !== undefined) {
+                                        phaseHTML += '<div style="font-weight: 600; margin-top: 10px; margin-bottom: 5px;">Dilation Parameters:</div>';
+                                        phaseHTML += `<div>Kernel Size: ${stats.dilation_kernel_size}×${stats.dilation_kernel_size}</div>`;
+                                        if (stats.dilation_iterations !== undefined) {
+                                            phaseHTML += `<div>Iterations: ${stats.dilation_iterations}</div>`;
+                                        }
+                                        if (stats.target_dilation_pixels !== undefined) {
+                                            phaseHTML += `<div>Target Dilation: ${stats.target_dilation_pixels} pixel(s)</div>`;
+                                        }
+                                    }
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Explanation
+                                if (phase5.description) {
+                                    phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">About Final Mask Generation (Clean Zone Map):</div>';
+                                    phaseHTML += `<div style="color: #666; font-size: 0.9em; line-height: 1.6;">${phase5.description}</div>`;
+                                    phaseHTML += '</div>';
+                                } else {
+                                    phaseHTML += '<div style="margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #333;">About Final Mask Generation (Clean Zone Map):</div>';
+                                    phaseHTML += '<div style="color: #666; font-size: 0.9em; line-height: 1.6;">';
+                                    const removalMode = phase5.statistics && phase5.statistics.removal_mode === 'comb_fields_only' ? 'comb_fields_only' : 'full';
+                                    if (removalMode === 'comb_fields_only') {
+                                        phaseHTML += '<strong>Comb Field Removal Mode:</strong> Only removes lines from detected comb fields (checkbox fields), preserving other form structures. Optimized for PaddleOCR-VL.<br>';
+                                        phaseHTML += '<strong>Comb Field Detection:</strong> Identifies checkbox fields with multiple vertical lines between horizontal lines.<br>';
+                                    } else {
+                                        phaseHTML += '<strong>Full Removal Mode:</strong> Removes all detected horizontal and vertical lines.<br>';
+                                    }
+                                    phaseHTML += '<strong>Text Exclusion:</strong> Excludes all detected text components to preserve data.<br>';
+                                    phaseHTML += '<strong>Dilation:</strong> Slightly thickens detected lines (1-2 pixels) to ensure complete removal without leaving "ghost lines" behind.<br>';
+                                    phaseHTML += '<strong>Clean Zone Map:</strong> This mask represents everything that is NOT data - the "Search and Destroy" map for the next phase.';
+                                    phaseHTML += '</div>';
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                phaseHTML += '</div>';
+                            }
+                            }
+                            
                             phaseOutputs.innerHTML = phaseHTML;
                         } else {
                             phaseOutputs.innerHTML = '';
@@ -1848,6 +2459,84 @@
 
             // Display semantic understanding if available
             displaySemanticUnderstanding(result);
+        }
+
+        // Display OCR Summary
+        function displayOCRSummary(result) {
+            // Show the summary container
+            ocrSummaryContainer.classList.add('show');
+            
+            // Calculate statistics
+            const textBlocks = result.text_blocks || [];
+            const totalBlocks = textBlocks.length;
+            const totalChars = textBlocks.reduce((sum, block) => sum + (block.text?.length || 0), 0);
+            const totalWords = textBlocks.reduce((sum, block) => {
+                const words = block.text?.split(/\s+/).filter(w => w.length > 0) || [];
+                return sum + words.length;
+            }, 0);
+            
+            // Get processing time
+            const processingTime = result.metadata?.processing_time_ms || 0;
+            const timeSeconds = (processingTime / 1000).toFixed(2);
+            
+            // Get engine info
+            const engine = result.metadata?.engine || 'Unknown';
+            const modelVariant = result.metadata?.model_variant || '';
+            
+            // Build stats HTML
+            let statsHTML = '';
+            
+            statsHTML += `<div class="ocr-stat-item">
+                <div class="ocr-stat-label">Text Blocks</div>
+                <div class="ocr-stat-value">${totalBlocks}</div>
+            </div>`;
+            
+            statsHTML += `<div class="ocr-stat-item">
+                <div class="ocr-stat-label">Total Characters</div>
+                <div class="ocr-stat-value">${totalChars.toLocaleString()}</div>
+            </div>`;
+            
+            statsHTML += `<div class="ocr-stat-item">
+                <div class="ocr-stat-label">Total Words</div>
+                <div class="ocr-stat-value">${totalWords.toLocaleString()}</div>
+            </div>`;
+            
+            statsHTML += `<div class="ocr-stat-item">
+                <div class="ocr-stat-label">Processing Time</div>
+                <div class="ocr-stat-value">${timeSeconds}s</div>
+            </div>`;
+            
+            statsHTML += `<div class="ocr-stat-item">
+                <div class="ocr-stat-label">Engine</div>
+                <div class="ocr-stat-value">${engine}${modelVariant && modelVariant !== 'unknown' ? ' ' + modelVariant : ''}</div>
+            </div>`;
+            
+            // Add confidence if available
+            if (textBlocks.length > 0) {
+                const avgConfidence = textBlocks.reduce((sum, block) => sum + (block.confidence || 0), 0) / textBlocks.length;
+                statsHTML += `<div class="ocr-stat-item">
+                    <div class="ocr-stat-label">Avg Confidence</div>
+                    <div class="ocr-stat-value">${(avgConfidence * 100).toFixed(1)}%</div>
+                </div>`;
+            }
+            
+            ocrSummaryStats.innerHTML = statsHTML;
+            
+            // Display text preview
+            if (textBlocks.length > 0) {
+                // Combine text blocks
+                let previewText = textBlocks.map(block => block.text).join('\n\n');
+                
+                // Limit preview to first 500 characters
+                if (previewText.length > 500) {
+                    previewText = previewText.substring(0, 500) + '...';
+                }
+                
+                ocrSummaryPreviewText.textContent = previewText;
+                ocrSummaryPreview.style.display = 'block';
+            } else {
+                ocrSummaryPreview.style.display = 'none';
+            }
         }
 
         // Display semantic understanding results
@@ -2029,6 +2718,7 @@
         }
 
         function hideResults() {
+            ocrSummaryContainer.classList.remove('show');
             resultsContainer.classList.remove('show');
             jsonViewerContainer.classList.remove('show');
             bboxContainer.classList.remove('show');

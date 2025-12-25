@@ -288,7 +288,7 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         workers=settings.workers,
-        reload=False,  # Disable reload in production
+        reload=True,  # Disable reload in production
         log_level=settings.log_level.lower(),
     )
 
