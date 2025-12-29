@@ -378,3 +378,5 @@ def calculate_binarization_quality(binary_image: np.ndarray) -> float:
     
     return max(0.0, min(1.0, quality))
 
+
+

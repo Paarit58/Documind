@@ -421,3 +421,5 @@ def calculate_noise_reduction_metric(
     # Normalize to 0-1 scale
     return max(0.0, min(1.0, reduction))
 
+
+

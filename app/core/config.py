@@ -456,7 +456,7 @@ class PreprocessingConfig(BaseModel):
         description="Enable junction map (wireframe) visualization"
     )
     structural_enable_comb_field_detection: bool = Field(
-        default=True,
+        default=False,
         description="Enable comb field detection from intersection points"
     )
     structural_intersection_cluster_threshold: int = Field(
@@ -472,7 +472,7 @@ class PreprocessingConfig(BaseModel):
         description="Minimum number of vertical lines for comb field detection"
     )
     structural_comb_field_pattern_detection: bool = Field(
-        default=True,
+        default=False,
         description="Enable enhanced pattern-based comb field detection (more accurate than intersection-based)"
     )
     structural_comb_field_vertical_tolerance: int = Field(
@@ -498,6 +498,12 @@ class PreprocessingConfig(BaseModel):
         ge=0,
         le=10,
         description="Padding in pixels to add around comb field bounding boxes for complete line extraction"
+    )
+    structural_comb_field_max_spacing: int = Field(
+        default=30,
+        ge=10,
+        le=100,
+        description="Maximum spacing in pixels between consecutive vertical lines to be considered a comb field"
     )
     structural_segment_context_radius: int = Field(
         default=10,

@@ -443,6 +443,154 @@ def _detect_comb_fields_pattern_based(
     return comb_fields
 
 
+def _detect_comb_fields_consecutive(
+    v_mask: np.ndarray,
+    h_mask: np.ndarray,
+    config: PreprocessingConfig,
+) -> list[dict]:
+    """
+    Simple comb field detection: Find consecutive vertical lines.
+    
+    Algorithm:
+    1. Find all vertical line segments using connected components
+    2. Filter by height - comb field lines should be relatively short (< 15% of image height)
+    3. Sort by x-coordinate to process left-to-right
+    4. Group consecutive lines - lines within max_spacing pixels are grouped together
+    5. Validate groups - groups with >= min_lines are considered comb fields
+    6. Find intersecting horizontals - for each group, find horizontal lines that intersect the vertical line region
+    7. Return comb fields with bounding boxes
+    
+    Args:
+        v_mask: Vertical lines mask
+        h_mask: Horizontal lines mask
+        config: Preprocessing configuration
+        
+    Returns:
+        List of comb field dictionaries with coordinates
+    """
+    comb_fields = []
+    h, w = v_mask.shape
+    
+    # Early return if no vertical lines
+    if np.sum(v_mask > 0) == 0:
+        return []
+    
+    # Step 1: Find all vertical line segments using connected components
+    v_num_labels, v_labels, v_stats, v_centroids = cv2.connectedComponentsWithStats(
+        v_mask, connectivity=8
+    )
+    
+    # Step 2: Extract vertical line information
+    vertical_lines = []
+    for label_id in range(1, v_num_labels):  # Skip background (label 0)
+        x = int(v_centroids[label_id][0])  # Centroid x-coordinate
+        height = v_stats[label_id, 3]  # Height
+        y_top = v_stats[label_id, 1]  # Top y-coordinate
+        y_bottom = y_top + height  # Bottom y-coordinate
+        
+        # Filter by height: comb field lines should be relatively short
+        # (typically < 15% of image height, or bounded by horizontals)
+        max_height = int(h * 0.15)  # 15% of image height
+        
+        if height <= max_height:
+            vertical_lines.append({
+                "x": x,
+                "height": height,
+                "y_top": y_top,
+                "y_bottom": y_bottom,
+                "label": label_id,
+            })
+    
+    if len(vertical_lines) < config.structural_comb_field_min_lines:
+        return []
+    
+    # Step 3: Sort by x-coordinate
+    vertical_lines.sort(key=lambda l: l["x"])
+    
+    # Step 4: Find consecutive groups
+    consecutive_groups = []
+    current_group = [vertical_lines[0]]
+    max_spacing = config.structural_comb_field_max_spacing
+    
+    for i in range(1, len(vertical_lines)):
+        spacing = vertical_lines[i]["x"] - vertical_lines[i-1]["x"]
+        
+        if spacing <= max_spacing:
+            # Consecutive - add to current group
+            current_group.append(vertical_lines[i])
+        else:
+            # Gap - check if current group is large enough
+            if len(current_group) >= config.structural_comb_field_min_lines:
+                consecutive_groups.append(current_group)
+            current_group = [vertical_lines[i]]
+    
+    # Don't forget the last group
+    if len(current_group) >= config.structural_comb_field_min_lines:
+        consecutive_groups.append(current_group)
+    
+    # Step 5: For each consecutive group, find intersecting horizontal lines
+    for group in consecutive_groups:
+        # Get bounding box of the group
+        min_x = min(line["x"] for line in group)
+        max_x = max(line["x"] for line in group)
+        min_y = min(line["y_top"] for line in group)
+        max_y = max(line["y_bottom"] for line in group)
+        
+        # Expand slightly to catch nearby horizontals
+        padding = 5
+        region_top_y = max(0, min_y - padding)
+        region_bottom_y = min(h, max_y + padding)
+        region_left_x = max(0, min_x - padding)
+        region_right_x = min(w, max_x + padding)
+        
+        # Find horizontal lines that intersect this region
+        h_region = h_mask[region_top_y:region_bottom_y, region_left_x:region_right_x]
+        
+        # Get horizontal line segments in this region
+        h_num_labels, h_labels, h_stats, _ = cv2.connectedComponentsWithStats(
+            h_region, connectivity=8
+        )
+        
+        # Find top and bottom horizontal lines
+        top_h_y = None
+        bottom_h_y = None
+        
+        for h_label_id in range(1, h_num_labels):
+            h_y = h_stats[h_label_id, 1] + region_top_y  # Global y-coordinate
+            h_height = h_stats[h_label_id, 3]
+            h_center_y = h_y + h_height // 2
+            
+            # Check if horizontal line intersects the vertical line region
+            if h_center_y >= min_y and h_center_y <= max_y:
+                if top_h_y is None or h_y < top_h_y:
+                    top_h_y = h_y
+                if bottom_h_y is None or h_y > bottom_h_y:
+                    bottom_h_y = h_y
+        
+        # If we found horizontal lines, use them; otherwise use vertical line bounds
+        if top_h_y is not None and bottom_h_y is not None:
+            final_top_y = top_h_y
+            final_bottom_y = bottom_h_y
+        else:
+            # No horizontals found, use vertical line bounds
+            final_top_y = min_y
+            final_bottom_y = max_y
+        
+        # Collect x-coordinates of vertical lines
+        x_coordinates = [line["x"] for line in group]
+        
+        comb_fields.append({
+            "top_y": int(final_top_y),
+            "bottom_y": int(final_bottom_y),
+            "left_x": int(min_x),
+            "right_x": int(max_x),
+            "vertical_lines": len(group),
+            "x_coordinates": x_coordinates,
+        })
+    
+    return comb_fields
+
+
 def _detect_comb_fields_intersection_based(
     intersection_points: np.ndarray,
     h_mask: np.ndarray,
@@ -518,74 +666,25 @@ def _detect_comb_fields(
     config: PreprocessingConfig,
 ) -> list[dict]:
     """
-    Detect comb fields using dual detection approach.
+    Detect comb fields using simple consecutive vertical lines approach.
     
-    Combines pattern-based detection (primary) with intersection-based detection (fallback)
-    to ensure maximum coverage of comb field structures.
+    This is a simplified approach that:
+    1. Finds consecutive vertical lines (within max_spacing)
+    2. Groups them if there are enough (min_lines)
+    3. Finds intersecting horizontal lines
+    4. Returns comb field bounding boxes
     
     Args:
-        intersection_points: Array of (y, x) intersection coordinates
+        intersection_points: Array of (y, x) intersection coordinates (kept for compatibility)
         h_mask: Horizontal mask
         v_mask: Vertical mask
         config: Preprocessing configuration
         
     Returns:
-        List of comb field dictionaries with coordinates (merged from both methods)
+        List of comb field dictionaries with coordinates
     """
-    comb_fields = []
-    
-    # Primary: Pattern-based detection (more robust)
-    if config.structural_comb_field_pattern_detection:
-        pattern_fields = _detect_comb_fields_pattern_based(h_mask, v_mask, config)
-        comb_fields.extend(pattern_fields)
-    
-    # Fallback: Intersection-based detection (catches edge cases)
-    intersection_fields = _detect_comb_fields_intersection_based(
-        intersection_points,
-        h_mask,
-        v_mask,
-        config.structural_comb_field_min_lines,
-        config.structural_intersection_cluster_threshold,
-    )
-    
-    # Merge results, removing duplicates
-    # Two comb fields are considered duplicates if they overlap significantly
-    all_fields = comb_fields + intersection_fields
-    
-    if not all_fields:
-        return []
-    
-    # Remove duplicates based on overlap
-    merged_fields = []
-    for field in all_fields:
-        is_duplicate = False
-        for existing in merged_fields:
-            # Check overlap: if bounding boxes overlap by >50%, consider duplicate
-            overlap_top = max(field["top_y"], existing["top_y"])
-            overlap_bottom = min(field["bottom_y"], existing["bottom_y"])
-            overlap_left = max(field["left_x"], existing["left_x"])
-            overlap_right = min(field["right_x"], existing["right_x"])
-            
-            if overlap_bottom > overlap_top and overlap_right > overlap_left:
-                overlap_area = (overlap_bottom - overlap_top) * (overlap_right - overlap_left)
-                field_area = (field["bottom_y"] - field["top_y"]) * (field["right_x"] - field["left_x"])
-                existing_area = (existing["bottom_y"] - existing["top_y"]) * (existing["right_x"] - existing["left_x"])
-                
-                overlap_ratio_field = overlap_area / field_area if field_area > 0 else 0
-                overlap_ratio_existing = overlap_area / existing_area if existing_area > 0 else 0
-                
-                if overlap_ratio_field > 0.5 or overlap_ratio_existing > 0.5:
-                    # Merge: keep the one with more vertical lines or larger area
-                    if field["vertical_lines"] > existing["vertical_lines"] or field_area > existing_area:
-                        merged_fields.remove(existing)
-                        merged_fields.append(field)
-                    is_duplicate = True
-                    break
-        
-        if not is_duplicate:
-            merged_fields.append(field)
-    
-    return merged_fields
+    # Use the simple consecutive approach
+    return _detect_comb_fields_consecutive(v_mask, h_mask, config)
 
 
 def _filter_segments_with_context(
@@ -1102,9 +1201,9 @@ def _create_comb_field_mask(
     """
     Create mask containing ONLY lines from comb fields.
     
-    Enhanced extraction with expanded bounding boxes and morphological operations
-    to ensure complete removal of comb field structures. This function is used for
-    selective comb field removal while preserving other form structures (boxes, standalone lines).
+    Simple extraction: Extract all lines within comb field bounding boxes.
+    This function is used for selective comb field removal while preserving
+    other form structures (boxes, standalone lines).
     
     Args:
         refined_h_mask: Refined horizontal lines mask
@@ -1122,7 +1221,6 @@ def _create_comb_field_mask(
     
     # Get padding from config
     padding = config.structural_comb_field_extraction_padding
-    tolerance = config.structural_comb_field_vertical_tolerance
     
     for comb_field in comb_fields:
         top_y = comb_field.get("top_y", 0)
@@ -1130,9 +1228,9 @@ def _create_comb_field_mask(
         left_x = comb_field.get("left_x", 0)
         right_x = comb_field.get("right_x", w)
         
-        # Expand bounding box with padding to ensure we catch all edge lines
-        expanded_top_y = max(0, top_y - padding - tolerance)
-        expanded_bottom_y = min(h, bottom_y + padding + tolerance + 1)
+        # Expand bounding box with padding
+        expanded_top_y = max(0, top_y - padding)
+        expanded_bottom_y = min(h, bottom_y + padding + 1)
         expanded_left_x = max(0, left_x - padding)
         expanded_right_x = min(w, right_x + padding + 1)
         
@@ -1142,8 +1240,7 @@ def _create_comb_field_mask(
         expanded_left_x = max(0, min(expanded_left_x, w - 1))
         expanded_right_x = max(0, min(expanded_right_x, w - 1))
         
-        # Extract ALL horizontal lines in the expanded comb field region
-        # Range: [expanded_top_y : expanded_bottom_y] within [expanded_left_x : expanded_right_x]
+        # Extract ALL horizontal lines in the expanded region
         if expanded_bottom_y > expanded_top_y and expanded_right_x > expanded_left_x:
             horizontal_region = refined_h_mask[expanded_top_y:expanded_bottom_y, expanded_left_x:expanded_right_x]
             if np.any(horizontal_region > 0):
@@ -1152,8 +1249,7 @@ def _create_comb_field_mask(
                     horizontal_region
                 )
         
-        # Extract ALL vertical lines in the expanded comb field region
-        # Range: [expanded_left_x : expanded_right_x] within [expanded_top_y : expanded_bottom_y]
+        # Extract ALL vertical lines in the expanded region
         if expanded_bottom_y > expanded_top_y and expanded_right_x > expanded_left_x:
             vertical_region = refined_v_mask[expanded_top_y:expanded_bottom_y, expanded_left_x:expanded_right_x]
             if np.any(vertical_region > 0):
@@ -1162,8 +1258,7 @@ def _create_comb_field_mask(
                     vertical_region
                 )
     
-    # Apply morphological operations to ensure complete line capture
-    # Small dilation to connect any broken line segments
+    # Apply small morphological operations to connect broken segments
     if len(comb_fields) > 0:
         kernel = np.ones((3, 3), dtype=np.uint8)
         comb_field_mask = cv2.dilate(comb_field_mask, kernel, iterations=1)

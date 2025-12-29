@@ -25,3 +25,5 @@ def image_to_base64(pil_image: Image.Image) -> str:
     img_base64 = base64.b64encode(img_buffer.getvalue()).decode("utf-8")
     return f"data:image/png;base64,{img_base64}"
 
+
+
