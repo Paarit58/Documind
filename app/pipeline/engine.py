@@ -115,13 +115,11 @@ class PipelineEngine:
                     logger.debug(f"Executing step: {step.name}")
                     context = step.run(context)
                     
-                    # Collect step output if this is the last step or step produced output
-                    is_last_step = (i == len(self._steps) - 1)
-                    if is_last_step or context.get_intermediate(f"{step.name}_output"):
-                        # Extract step output from context
-                        step_output = self._extract_step_output(step.name, context, original_image)
-                        if step_output:
-                            context.set_intermediate(f"{step.name}_output", step_output)
+                    # Extract step output for ALL steps (not just last one)
+                    # This ensures preprocessing output is always captured
+                    step_output = self._extract_step_output(step.name, context, original_image)
+                    if step_output:
+                        context.set_intermediate(f"{step.name}_output", step_output)
                 else:
                     logger.debug(f"Skipping step: {step.name}")
                     
@@ -249,8 +247,8 @@ def create_default_pipeline() -> PipelineEngine:
     engine = PipelineEngine()
     # Add preprocessing step
     engine.add_step(PreprocessPipelineStep())
-    # Temporarily disable OCR step for preprocessing testing
-    # engine.add_step(OCRPipelineStep())
+    # Add OCR step
+    engine.add_step(OCRPipelineStep())
     # engine.add_step(SemanticUnderstandingStep())
     return engine
 

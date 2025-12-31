@@ -13,15 +13,17 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from PIL import Image
 
 from app.api.v1.schemas import (
+    BBoxSchema,
     ConfigDefaultsResponse,
     DecodingConfigSchema,
+    DocumentElementSchema,
+    DocumentSectionSchema,
     ErrorResponse,
     HealthResponse,
     OCRConfigRequest,
-    OCRResponse,
     OCRMetadataSchema,
+    OCRResponse,
     TextBlockSchema,
-    BBoxSchema,
 )
 from app.core.config import (
     ModelVariant,
@@ -30,7 +32,7 @@ from app.core.config import (
     get_settings,
 )
 from app.core.registry import get_registry
-from app.core.types import OCRResult
+from app.core.types import DocumentElement, DocumentSection, EnhancedOCRResult, OCRResult
 from app.pipeline.engine import create_default_pipeline
 
 logger = logging.getLogger(__name__)
@@ -43,8 +45,8 @@ SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif"}
 
 
 def _result_to_response(result: OCRResult) -> OCRResponse:
-    """Convert internal OCRResult to API response schema."""
-    return OCRResponse(
+    """Convert internal OCRResult/EnhancedOCRResult to API response schema."""
+    response = OCRResponse(
         metadata=OCRMetadataSchema(
             engine=result.metadata.engine,
             model_variant=result.metadata.model_variant,
@@ -66,6 +68,61 @@ def _result_to_response(result: OCRResult) -> OCRResponse:
         raw_output=result.raw_output,
         errors=result.errors,
     )
+    
+    # Add enhanced structure if result is EnhancedOCRResult
+    if isinstance(result, EnhancedOCRResult):
+        response.document_type = result.document_type
+        response.language = result.language
+        response.sections = [
+            DocumentSectionSchema(
+                section_id=section.section_id,
+                section_type=section.section_type,
+                elements=[
+                    DocumentElementSchema(
+                        element_id=elem.element_id,
+                        element_type=elem.element_type,
+                        content=elem.content,
+                        bbox=BBoxSchema(
+                            x1=elem.bbox.x1,
+                            y1=elem.bbox.y1,
+                            x2=elem.bbox.x2,
+                            y2=elem.bbox.y2,
+                        ) if elem.bbox else None,
+                        confidence=elem.confidence,
+                        reading_order=elem.reading_order,
+                        metadata=elem.metadata,
+                    )
+                    for elem in section.elements
+                ],
+                bbox=BBoxSchema(
+                    x1=section.bbox.x1,
+                    y1=section.bbox.y1,
+                    x2=section.bbox.x2,
+                    y2=section.bbox.y2,
+                ) if section.bbox else None,
+                reading_order=section.reading_order,
+            )
+            for section in result.sections
+        ]
+        response.elements = [
+            DocumentElementSchema(
+                element_id=elem.element_id,
+                element_type=elem.element_type,
+                content=elem.content,
+                bbox=BBoxSchema(
+                    x1=elem.bbox.x1,
+                    y1=elem.bbox.y1,
+                    x2=elem.bbox.x2,
+                    y2=elem.bbox.y2,
+                ) if elem.bbox else None,
+                confidence=elem.confidence,
+                reading_order=elem.reading_order,
+                metadata=elem.metadata,
+            )
+            for elem in result.elements
+        ]
+    
+    return response
 
 
 def _validate_image_file(file: UploadFile) -> None:

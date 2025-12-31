@@ -98,52 +98,17 @@ class PreprocessingConfig(BaseModel):
     """
     Configuration for image preprocessing.
     
-    Controls global normalization preprocessing layers:
-    - Layer 1: Color & Lighting (Grayscale + CLAHE)
-    - Layer 2: Geometric (Deskew + Border removal)
-    - Layer 3: Signal-to-Noise (Median blur + Bilateral filtering)
-    - Layer 4: Binarization (Otsu + Sauvola adaptive thresholding)
+    Controls simplified preprocessing pipeline:
+    1. Grayscale conversion (always)
+    2. Deskew (optional)
+    3. Binarization (Sauvola method)
+    4. Comb field removal (exact working script logic)
     """
     
-    # Layer 1: Color & Lighting
-    enable_color_lighting: bool = Field(
-        default=True,
-        description="Enable Color & Lighting layer (Grayscale + CLAHE)"
-    )
-    clahe_clip_limit: float = Field(
-        default=2.0,
-        ge=0.0,
-        le=10.0,
-        description="CLAHE clip limit for contrast enhancement"
-    )
-    clahe_tile_grid_size: tuple[int, int] = Field(
-        default=(8, 8),
-        description="CLAHE tile grid size (rows, cols) for local equalization"
-    )
-  
-    bilateral_d: int = Field(
-        default=7,
-        ge=1,
-        le=15,
-        description="Diameter of pixel neighborhood for bilateral filter (odd number, typically 5-9)"
-    )
-    bilateral_sigma_color: float = Field(
-        default=80.0,
-        ge=0.0,
-        le=200.0,
-        description="Filter sigma in color space (larger = more color smoothing)"
-    )
-    bilateral_sigma_space: float = Field(
-        default=70.0,
-        ge=0.0,
-        le=200.0,
-        description="Filter sigma in coordinate space (larger = more spatial smoothing)"
-    )
-    
-    # Layer 2: Geometric
+    # Deskew
     enable_geometric_layer: bool = Field(
         default=True,
-        description="Enable Geometric layer (Deskew + Border detection)"
+        description="Enable deskew detection and correction"
     )
     skew_threshold_degrees: float = Field(
         default=0.5,
@@ -179,172 +144,11 @@ class PreprocessingConfig(BaseModel):
         le=5,
         description="Step size (degrees) for projection profile analysis"
     )
-    # Border Detection & Padding
-    enable_border_detection: bool = Field(
-        default=True,
-        description="Enable border detection and padding"
-    )
-    border_detection_threshold: int = Field(
-        default=10,
-        ge=1,
-        le=50,
-        description="Threshold for edge detection (pixel intensity difference)"
-    )
-    border_padding_percent: float = Field(
-        default=2.0,
-        ge=0.0,
-        le=10.0,
-        description="Padding percentage of image dimensions"
-    )
-    border_min_padding_pixels: int = Field(
-        default=20,
-        ge=0,
-        le=200,
-        description="Minimum padding in pixels"
-    )
-    border_max_padding_pixels: int = Field(
-        default=100,
-        ge=10,
-        le=500,
-        description="Maximum padding in pixels"
-    )
     
-    # Layer 3: Signal-to-Noise
-    enable_signal_noise_layer: bool = Field(
-        default=True,
-        description="Enable Signal-to-Noise layer (Median blur + Bilateral filter)"
-    )
-    # Noise Detection
-    enable_noise_auto_detection: bool = Field(
-        default=True,
-        description="Enable automatic noise level detection"
-    )
-    noise_threshold: float | None = Field(
-        default=None,
-        ge=0.0,
-        description="Manual noise threshold override (None = auto-detect)"
-    )
-    noise_detection_method: str = Field(
-        default="variance",
-        description="Noise detection method: 'variance', 'gradient', or 'both'"
-    )
-    # Median Blur
-    enable_median_blur: bool = Field(
-        default=False,
-        description="Enable median blur filtering"
-    )
-    median_blur_kernel_size: int | None = Field(
-        default=None,
-        ge=3,
-        le=15,
-        description="Median blur kernel size (None = auto-calculate, must be odd)"
-    )
-    median_blur_auto_min: int = Field(
-        default=3,
-        ge=3,
-        le=15,
-        description="Minimum kernel size for auto-detection (must be odd)"
-    )
-    median_blur_auto_max: int = Field(
-        default=3,
-        ge=3,
-        le=15,
-        description="Maximum kernel size for auto-detection (must be odd)"
-    )
-    median_blur_auto_step: int = Field(
-        default=2,
-        ge=2,
-        le=4,
-        description="Step size for kernel size (must result in odd numbers)"
-    )
-    # Bilateral Filter
-    enable_bilateral_filter: bool = Field(
-        default=True,
-        description="Enable bilateral filtering"
-    )
-    bilateral_d: int | None = Field(
-        default=None,
-        ge=1,
-        le=15,
-        description="Bilateral filter diameter (None = auto-calculate, must be odd)"
-    )
-    bilateral_sigma_color: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=200.0,
-        description="Bilateral filter color space sigma (None = auto-calculate)"
-    )
-    bilateral_sigma_space: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=200.0,
-        description="Bilateral filter coordinate space sigma (None = auto-calculate)"
-    )
-    bilateral_auto_d_min: int = Field(
-        default=5,
-        ge=1,
-        le=15,
-        description="Minimum d for auto-detection (must be odd)"
-    )
-    bilateral_auto_d_max: int = Field(
-        default=9,
-        ge=1,
-        le=15,
-        description="Maximum d for auto-detection (must be odd)"
-    )
-    bilateral_auto_sigma_color_min: float = Field(
-        default=50.0,
-        ge=0.0,
-        le=200.0,
-        description="Minimum sigma color for auto-detection"
-    )
-    bilateral_auto_sigma_color_max: float = Field(
-        default=100.0,
-        ge=0.0,
-        le=200.0,
-        description="Maximum sigma color for auto-detection"
-    )
-    bilateral_auto_sigma_space_min: float = Field(
-        default=50.0,
-        ge=0.0,
-        le=200.0,
-        description="Minimum sigma space for auto-detection"
-    )
-    bilateral_auto_sigma_space_max: float = Field(
-        default=100.0,
-        ge=0.0,
-        le=200.0,
-        description="Maximum sigma space for auto-detection"
-    )
-    # Output Selection
-    signal_noise_output_method: str = Field(
-        default="bilateral",
-        description="Output method: 'median', 'bilateral', or 'both' (show both, use median as final)"
-    )
-    
-    # Layer 4: Binarization
+    # Binarization (Sauvola only)
     enable_binarization_layer: bool = Field(
         default=True,
-        description="Enable Binarization layer (Otsu + Sauvola adaptive thresholding)"
-    )
-    binarization_method: str = Field(
-        default="both",
-        description="Binarization method: 'otsu', 'sauvola', or 'both' (show both, use otsu as final)"
-    )
-    # Otsu's Method
-    enable_otsu: bool = Field(
-        default=True,
-        description="Enable Otsu's thresholding"
-    )
-    otsu_max_value: int = Field(
-        default=255,
-        ge=1,
-        le=255,
-        description="Maximum value for thresholded pixels"
-    )
-    otsu_threshold_type: str = Field(
-        default="BINARY",
-        description="Threshold type: 'BINARY', 'BINARY_INV', 'TRUNC', 'TOZERO', 'TOZERO_INV'"
+        description="Enable binarization using Sauvola's adaptive thresholding"
     )
     # Sauvola's Method
     enable_sauvola: bool = Field(
@@ -405,173 +209,53 @@ class PreprocessingConfig(BaseModel):
         le=255.0,
         description="Maximum r for auto-detection"
     )
-    # Output Selection
-    binarization_output_method: str = Field(
-        default="sauvola",  # Changed from "otsu" to "sauvola"
-        description="Output method: 'otsu', 'sauvola', or 'both' (show both, use sauvola as final)"
-    )
     
-    # Layer 5: Structural Analysis
-    enable_structural_analysis: bool = Field(
-        default=True,  # Start disabled for testing
-        description="Enable Structural Analysis layer (form line detection and removal)"
+    # Comb Field Removal
+    enable_comb_field_removal: bool = Field(
+        default=True,
+        description="Enable comb field removal using exact working script logic"
     )
-    # Phase 1: Kernel Definition
-    structural_kernel_ratio: float = Field(
-        default=40.0,
-        ge=20.0,
-        le=100.0,
-        description="Kernel size ratio (1/N of image dimension, e.g., 40 = 1/40th)"
+    comb_k_h: int = Field(
+        default=15,
+        ge=3,
+        le=50,
+        description="Vertical kernel height for morphological opening"
     )
-    structural_kernel_min_size: int = Field(
-        default=3,
-        ge=1,
-        le=20,
-        description="Minimum kernel size in pixels (safety limit to avoid too-small kernels)"
+    comb_k_w: int = Field(
+        default=15,
+        ge=3,
+        le=50,
+        description="Horizontal kernel width for morphological opening"
     )
-    structural_kernel_max_size: int = Field(
-        default=50,
+    comb_max_h: int = Field(
+        default=70,
         ge=10,
         le=200,
-        description="Maximum kernel size in pixels (safety limit to avoid too-large kernels)"
+        description="Maximum height for short vertical lines (pixels)"
     )
-    
-    # Phase 3: Grid Intersection & Refinement
-    structural_min_line_length_ratio: float = Field(
-        default=0.05,
-        ge=0.01,
-        le=0.2,
-        description="Minimum line length ratio (relative to image dimension) to keep"
-    )
-    structural_intersection_threshold: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Minimum intersection size in pixels to consider as grid corner"
-    )
-    
-    # Phase 3: Enhanced Grid Analysis
-    structural_enable_junction_map: bool = Field(
-        default=True,
-        description="Enable junction map (wireframe) visualization"
-    )
-    structural_enable_comb_field_detection: bool = Field(
-        default=False,
-        description="Enable comb field detection from intersection points"
-    )
-    structural_intersection_cluster_threshold: int = Field(
-        default=5,
-        ge=1,
-        le=20,
-        description="Distance threshold for clustering nearby intersections"
-    )
-    structural_comb_field_min_lines: int = Field(
-        default=3,
+    comb_min_serial: int = Field(
+        default=4,
         ge=2,
         le=20,
-        description="Minimum number of vertical lines for comb field detection"
+        description="Minimum number of lines in a row for seriality filtering"
     )
-    structural_comb_field_pattern_detection: bool = Field(
-        default=False,
-        description="Enable enhanced pattern-based comb field detection (more accurate than intersection-based)"
+    comb_max_stroke_width: float = Field(
+        default=3.0,
+        ge=1.0,
+        le=10.0,
+        description="Maximum stroke width for text rejection (pixels)"
     )
-    structural_comb_field_vertical_tolerance: int = Field(
-        default=5,
-        ge=1,
-        le=20,
-        description="Tolerance in pixels for vertical line detection near horizontal lines in comb fields"
+    comb_min_aspect_ratio: float = Field(
+        default=3.0,
+        ge=1.0,
+        le=10.0,
+        description="Minimum aspect ratio for text rejection"
     )
-    structural_comb_field_min_vertical_coverage: float = Field(
-        default=0.6,
-        ge=0.3,
-        le=1.0,
-        description="Minimum percentage of height that vertical lines must cover to be considered part of comb field"
-    )
-    structural_comb_field_max_line_spacing_ratio: float = Field(
-        default=0.1,
-        ge=0.01,
-        le=0.5,
-        description="Maximum spacing between vertical lines as ratio of image width (for pattern validation)"
-    )
-    structural_comb_field_extraction_padding: int = Field(
-        default=3,
-        ge=0,
-        le=10,
-        description="Padding in pixels to add around comb field bounding boxes for complete line extraction"
-    )
-    structural_comb_field_max_spacing: int = Field(
-        default=30,
-        ge=10,
-        le=100,
-        description="Maximum spacing in pixels between consecutive vertical lines to be considered a comb field"
-    )
-    structural_segment_context_radius: int = Field(
-        default=10,
+    comb_min_long_intersections: int = Field(
+        default=8,
         ge=1,
         le=50,
-        description="Radius for context-aware segment filtering (pixels)"
-    )
-    
-    # Phase 4: Text Preservation
-    structural_enable_text_preservation: bool = Field(
-        default=True,
-        description="Enable intelligent text preservation (distinguish text from lines)"
-    )
-    structural_text_aspect_ratio_min: float = Field(
-        default=0.2,
-        ge=0.1,
-        le=1.0,
-        description="Minimum aspect ratio for text components (width/height or height/width)"
-    )
-    structural_text_aspect_ratio_max: float = Field(
-        default=5.0,
-        ge=2.0,
-        le=10.0,
-        description="Maximum aspect ratio for text components"
-    )
-    structural_text_min_area: int = Field(
-        default=10,
-        ge=1,
-        le=100,
-        description="Minimum area in pixels for text components"
-    )
-    structural_text_max_area_ratio: float = Field(
-        default=0.1,
-        ge=0.01,
-        le=0.5,
-        description="Maximum area ratio (relative to image) for text components"
-    )
-    structural_text_min_solidity: float = Field(
-        default=0.3,
-        ge=0.1,
-        le=1.0,
-        description="Minimum solidity (filledness) for text components"
-    )
-    
-    # Phase 5: Final Mask Generation (Clean Zone Map)
-    structural_mask_dilation_kernel_size: int = Field(
-        default=3,
-        ge=3,
-        le=7,
-        description="Kernel size for mask dilation (must be odd, typically 3 or 5)"
-    )
-    structural_mask_dilation_iterations: int = Field(
-        default=1,
-        ge=1,
-        le=3,
-        description="Number of dilation iterations (1 = ~1 pixel, 2 = ~2 pixels)"
-    )
-    structural_mask_dilation_pixels: int = Field(
-        default=1,
-        ge=1,
-        le=2,
-        description="Target dilation in pixels (for documentation/clarity, typically 1-2 pixels)"
-    )
-    
-    # Comb Field Removal Mode
-    structural_comb_field_removal_only: bool = Field(
-        default=True,
-        description="Remove only comb fields (checkbox fields), preserve other form lines. Useful for PaddleOCR-VL optimization."
+        description="Minimum intersections required for long vertical lines to be considered grid-like"
     )
     
     model_config = {"frozen": True}
@@ -676,7 +360,7 @@ class AppSettings(BaseSettings):
     
     # PaddleOCR-VL settings
     paddleocr_mode: Literal["document_parsing", "element_recognition"] = Field(
-        default="document_parsing",
+        default="element_recognition",
         description="Default PaddleOCR-VL mode"
     )
     

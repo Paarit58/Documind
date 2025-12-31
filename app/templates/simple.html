@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuMind - Preprocessing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 1em;
+        }
+
+        .upload-section {
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .upload-text {
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .file-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .process-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 40px;
+        }
+
+        .process-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .process-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            display: none;
+            padding: 15px;
+            background: #fee;
+            border: 1px solid #fcc;
+            border-radius: 8px;
+            color: #c33;
+            margin-bottom: 20px;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .results {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-section {
+            margin-bottom: 30px;
+        }
+
+        .result-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .preprocessed-image {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .preprocessed-image img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .image-info {
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .phase-outputs {
+            margin-top: 20px;
+        }
+
+        .phase-item {
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .phase-header {
+            background: #f8f9ff;
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .phase-header:hover {
+            background: #f0f2ff;
+        }
+
+        .phase-title {
+            font-weight: 600;
+            color: #333;
+            text-transform: capitalize;
+        }
+
+        .phase-toggle {
+            color: #667eea;
+            font-size: 1.2em;
+            transition: transform 0.2s;
+        }
+
+        .phase-item.expanded .phase-toggle {
+            transform: rotate(180deg);
+        }
+
+        .phase-content {
+            display: none;
+            padding: 15px;
+        }
+
+        .phase-item.expanded .phase-content {
+            display: block;
+        }
+
+        .phase-content img {
+            max-width: 100%;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .phase-content p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .metadata {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .metadata-item:last-child {
+            border-bottom: none;
+        }
+
+        .metadata-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .metadata-value {
+            color: #666;
+        }
+
+        /* OCR Visualization Styles */
+        .image-overlay-container {
+            margin-bottom: 30px;
+        }
+
+        .overlay-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #f0f2ff;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+        }
+
+        .image-wrapper img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        #bboxCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .structured-view {
+            margin-top: 30px;
+        }
+
+        .view-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .view-header h3 {
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-toggle {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #666;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .view-toggle.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .structured-list {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .section-item {
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .section-item:last-child {
+            border-bottom: none;
+        }
+
+        .section-header {
+            background: #f8f9ff;
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: #f0f2ff;
+        }
+
+        .section-title {
+            font-weight: 600;
+            color: #333;
+            text-transform: capitalize;
+        }
+
+        .section-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        .section-toggle {
+            color: #667eea;
+            font-size: 1.2em;
+            transition: transform 0.2s;
+        }
+
+        .section-item.expanded .section-toggle {
+            transform: rotate(180deg);
+        }
+
+        .section-elements {
+            display: none;
+            padding: 0;
+        }
+
+        .section-item.expanded .section-elements {
+            display: block;
+        }
+
+        .element-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .element-item:hover {
+            background: #f8f9ff;
+        }
+
+        .element-item.highlighted {
+            background: #e8ebff;
+            border-left: 4px solid #667eea;
+        }
+
+        .element-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .element-type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .element-type-title { background: #3B82F6; color: white; }
+        .element-type-paragraph { background: #10B981; color: white; }
+        .element-type-table { background: #F59E0B; color: white; }
+        .element-type-formula { background: #8B5CF6; color: white; }
+        .element-type-chart { background: #EC4899; color: white; }
+        .element-type-text { background: #6B7280; color: white; }
+        .element-type-header { background: #6B7280; color: white; }
+        .element-type-footer { background: #6B7280; color: white; }
+        .element-type-list { background: #10B981; color: white; }
+
+        .element-order {
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .element-content {
+            color: #333;
+            font-size: 0.9em;
+            margin-top: 5px;
+            white-space: pre-wrap;
+            max-height: 100px;
+            overflow: hidden;
+        }
+
+        .element-content.expanded {
+            max-height: none;
+        }
+
+        .element-meta {
+            display: flex;
+            gap: 15px;
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .element-details {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .element-details h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .details-content {
+            color: #666;
+        }
+
+        .details-item {
+            margin-bottom: 10px;
+        }
+
+        .details-label {
+            font-weight: 600;
+            color: #333;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DocuMind</h1>
+        <p class="subtitle">Document Preprocessing Pipeline</p>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Click to upload or drag and drop</div>
+                <div class="upload-hint">Supports: JPEG, PNG, WEBP, TIFF</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/tiff">
+            
+            <div class="file-preview" id="filePreview"></div>
+
+            <button class="process-button" id="processButton" disabled>Process Document</button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Processing document...</div>
+            </div>
+
+            <div class="error" id="error"></div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-section">
+                <h2>Preprocessed Image</h2>
+                <div class="preprocessed-image" id="preprocessedImage"></div>
+            </div>
+
+            <div class="result-section" id="ocrResultsSection" style="display: none;">
+                <h2>OCR Results</h2>
+                
+                <!-- Image Overlay View -->
+                <div class="image-overlay-container">
+                    <div class="overlay-controls">
+                        <button class="filter-btn active" data-type="all">All</button>
+                        <button class="filter-btn" data-type="title">Title</button>
+                        <button class="filter-btn" data-type="paragraph">Paragraph</button>
+                        <button class="filter-btn" data-type="table">Table</button>
+                        <button class="filter-btn" data-type="formula">Formula</button>
+                        <button class="filter-btn" data-type="chart">Chart</button>
+                    </div>
+                    <div class="image-wrapper">
+                        <img id="ocrImage" src="" alt="OCR Image" style="display: none;">
+                        <canvas id="bboxCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Structured List View -->
+                <div class="structured-view">
+                    <div class="view-header">
+                        <h3>Document Structure</h3>
+                        <div class="view-controls">
+                            <button class="view-toggle active" data-view="sections">Sections</button>
+                            <button class="view-toggle" data-view="elements">All Elements</button>
+                        </div>
+                    </div>
+                    <div class="structured-list" id="structuredList"></div>
+                </div>
+
+                <!-- Element Details Panel -->
+                <div class="element-details" id="elementDetails" style="display: none;">
+                    <h3>Element Details</h3>
+                    <div class="details-content" id="detailsContent"></div>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h2>Processing Metadata</h2>
+                <div class="metadata" id="metadata"></div>
+            </div>
+
+            <div class="result-section">
+                <h2>Phase Outputs</h2>
+                <div class="phase-outputs" id="phaseOutputs"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const filePreview = document.getElementById('filePreview');
+        const processButton = document.getElementById('processButton');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const preprocessedImage = document.getElementById('preprocessedImage');
+        const metadata = document.getElementById('metadata');
+        const phaseOutputs = document.getElementById('phaseOutputs');
+
+        let selectedFile = null;
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Handle file selection
+        function handleFileSelect(file) {
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff'];
+            if (!validTypes.includes(file.type)) {
+                showError('Invalid file type. Please upload a JPEG, PNG, WEBP, or TIFF image.');
+                return;
+            }
+
+            selectedFile = file;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                filePreview.innerHTML = `
+                    <img src="${e.target.result}" alt="Preview">
+                    <div class="file-name">${file.name}</div>
+                `;
+            };
+            reader.readAsDataURL(file);
+            
+            processButton.disabled = false;
+            hideError();
+            hideResults();
+        }
+
+        // Process button click
+        processButton.addEventListener('click', async () => {
+            if (!selectedFile) {
+                showError('Please select a file first.');
+                return;
+            }
+
+            hideError();
+            hideResults();
+            showLoading();
+            processButton.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const response = await fetch('/api/v1/ocr', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Processing failed');
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (err) {
+                showError(err.message || 'An error occurred while processing the document.');
+            } finally {
+                hideLoading();
+                processButton.disabled = false;
+            }
+        });
+
+        // Global state for OCR visualization
+        let ocrElements = [];
+        let ocrSections = [];
+        let currentImage = null;
+        let currentImageWidth = 0;
+        let currentImageHeight = 0;
+        let activeFilter = 'all';
+        let currentView = 'sections';
+        let selectedElementId = null;
+
+        // Element type colors
+        const elementColors = {
+            'title': '#3B82F6',
+            'paragraph': '#10B981',
+            'table': '#F59E0B',
+            'formula': '#8B5CF6',
+            'chart': '#EC4899',
+            'text': '#6B7280',
+            'header': '#6B7280',
+            'footer': '#6B7280',
+            'list': '#10B981'
+        };
+
+        // Display results
+        function displayResults(data) {
+            // Get preprocessing results
+            const preprocessResult = data.raw_output?.step_results?.preprocess;
+            
+            if (!preprocessResult) {
+                showError('No preprocessing results found in response.');
+                return;
+            }
+
+            // Display preprocessed image
+            if (preprocessResult.preprocessed_image) {
+                preprocessedImage.innerHTML = `
+                    <img src="${preprocessResult.preprocessed_image}" alt="Preprocessed Image">
+                    <div class="image-info">
+                        Original: ${preprocessResult.original_size?.[0]} × ${preprocessResult.original_size?.[1]} px | 
+                        Preprocessed: ${preprocessResult.preprocessed_size?.[0]} × ${preprocessResult.preprocessed_size?.[1]} px
+                    </div>
+                `;
+            }
+
+            // Display OCR results if available
+            if (data.elements && data.elements.length > 0) {
+                ocrElements = data.elements;
+                ocrSections = data.sections || [];
+                
+                // Set image for OCR visualization
+                const ocrImage = document.getElementById('ocrImage');
+                if (preprocessResult.preprocessed_image) {
+                    ocrImage.src = preprocessResult.preprocessed_image;
+                    ocrImage.style.display = 'block';
+                    ocrImage.onload = () => {
+                        currentImageWidth = ocrImage.offsetWidth;
+                        currentImageHeight = ocrImage.offsetHeight;
+                        drawBoundingBoxes();
+                    };
+                }
+                
+                renderStructuredList();
+                document.getElementById('ocrResultsSection').style.display = 'block';
+            }
+
+            // Display metadata
+            if (data.metadata) {
+                metadata.innerHTML = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">Engine:</span>
+                        <span class="metadata-value">${data.metadata.engine || 'N/A'}</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">Processing Time:</span>
+                        <span class="metadata-value">${(data.metadata.processing_time_ms || 0).toFixed(2)} ms</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">Model Variant:</span>
+                        <span class="metadata-value">${data.metadata.model_variant || 'N/A'}</span>
+                    </div>
+                    ${data.document_type ? `
+                    <div class="metadata-item">
+                        <span class="metadata-label">Document Type:</span>
+                        <span class="metadata-value">${data.document_type}</span>
+                    </div>
+                    ` : ''}
+                `;
+            }
+
+            // Display phase outputs
+            const phaseOutputsData = preprocessResult.phase_outputs || {};
+            phaseOutputs.innerHTML = '';
+
+            if (Object.keys(phaseOutputsData).length === 0) {
+                phaseOutputs.innerHTML = '<p style="color: #666; padding: 20px;">No phase outputs available.</p>';
+            } else {
+                Object.entries(phaseOutputsData).forEach(([phaseName, phaseData]) => {
+                    const phaseItem = document.createElement('div');
+                    phaseItem.className = 'phase-item';
+                    
+                    const phaseHeader = document.createElement('div');
+                    phaseHeader.className = 'phase-header';
+                    phaseHeader.innerHTML = `
+                        <span class="phase-title">${phaseName}</span>
+                        <span class="phase-toggle">▼</span>
+                    `;
+                    
+                    const phaseContent = document.createElement('div');
+                    phaseContent.className = 'phase-content';
+                    
+                    // Add phase-specific content
+                    if (phaseData.processed_image) {
+                        const img = document.createElement('img');
+                        img.src = phaseData.processed_image;
+                        img.alt = `${phaseName} result`;
+                        phaseContent.appendChild(img);
+                    }
+                    
+                    // Add any other phase data as text
+                    Object.entries(phaseData).forEach(([key, value]) => {
+                        if (key !== 'processed_image' && value !== null && value !== undefined) {
+                            const p = document.createElement('p');
+                            if (typeof value === 'object') {
+                                p.textContent = `${key}: ${JSON.stringify(value, null, 2)}`;
+                            } else {
+                                p.textContent = `${key}: ${value}`;
+                            }
+                            phaseContent.appendChild(p);
+                        }
+                    });
+                    
+                    phaseHeader.addEventListener('click', () => {
+                        phaseItem.classList.toggle('expanded');
+                    });
+                    
+                    phaseItem.appendChild(phaseHeader);
+                    phaseItem.appendChild(phaseContent);
+                    phaseOutputs.appendChild(phaseItem);
+                });
+            }
+
+            showResults();
+        }
+
+        // Draw bounding boxes on canvas
+        function drawBoundingBoxes() {
+            const canvas = document.getElementById('bboxCanvas');
+            const img = document.getElementById('ocrImage');
+            if (!canvas || !img || !img.complete) return;
+
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.offsetWidth;
+            canvas.height = img.offsetHeight;
+
+            // Get original image dimensions from first element with bbox
+            let originalWidth = 0, originalHeight = 0;
+            const elementWithBbox = ocrElements.find(e => e.bbox);
+            if (elementWithBbox && elementWithBbox.bbox) {
+                // Estimate original dimensions (use max bbox coordinates)
+                originalWidth = Math.max(...ocrElements.filter(e => e.bbox).map(e => e.bbox.x2));
+                originalHeight = Math.max(...ocrElements.filter(e => e.bbox).map(e => e.bbox.y2));
+            }
+
+            if (originalWidth === 0 || originalHeight === 0) return;
+
+            const scaleX = canvas.width / originalWidth;
+            const scaleY = canvas.height / originalHeight;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ocrElements.forEach((element, index) => {
+                if (!element.bbox) return;
+                if (activeFilter !== 'all' && element.element_type !== activeFilter) return;
+
+                const color = elementColors[element.element_type] || '#666';
+                const x = element.bbox.x1 * scaleX;
+                const y = element.bbox.y1 * scaleY;
+                const w = (element.bbox.x2 - element.bbox.x1) * scaleX;
+                const h = (element.bbox.y2 - element.bbox.y1) * scaleY;
+
+                // Draw rectangle
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, w, h);
+
+                // Highlight selected element
+                if (selectedElementId === element.element_id) {
+                    ctx.fillStyle = color + '33';
+                    ctx.fillRect(x, y, w, h);
+                }
+
+                // Draw label
+                ctx.fillStyle = color;
+                ctx.font = '12px Arial';
+                ctx.fillText(`${element.element_type} #${element.reading_order}`, x + 2, y - 5);
+            });
+        }
+
+        // Render structured list
+        function renderStructuredList() {
+            const listContainer = document.getElementById('structuredList');
+            listContainer.innerHTML = '';
+
+            if (currentView === 'sections' && ocrSections.length > 0) {
+                ocrSections.forEach(section => {
+                    const sectionItem = document.createElement('div');
+                    sectionItem.className = 'section-item';
+                    
+                    const sectionHeader = document.createElement('div');
+                    sectionHeader.className = 'section-header';
+                    sectionHeader.innerHTML = `
+                        <div>
+                            <span class="section-title">${section.section_type}</span>
+                            <span class="section-badge">${section.elements.length} elements</span>
+                        </div>
+                        <span class="section-toggle">▼</span>
+                    `;
+                    
+                    const sectionElements = document.createElement('div');
+                    sectionElements.className = 'section-elements';
+                    
+                    section.elements.forEach(element => {
+                        const elemDiv = createElementItem(element);
+                        sectionElements.appendChild(elemDiv);
+                    });
+                    
+                    sectionHeader.addEventListener('click', () => {
+                        sectionItem.classList.toggle('expanded');
+                    });
+                    
+                    sectionItem.appendChild(sectionHeader);
+                    sectionItem.appendChild(sectionElements);
+                    listContainer.appendChild(sectionItem);
+                });
+            } else {
+                // Show all elements
+                ocrElements.forEach(element => {
+                    const elemDiv = createElementItem(element);
+                    listContainer.appendChild(elemDiv);
+                });
+            }
+        }
+
+        // Create element item
+        function createElementItem(element) {
+            const elemDiv = document.createElement('div');
+            elemDiv.className = 'element-item';
+            if (selectedElementId === element.element_id) {
+                elemDiv.classList.add('highlighted');
+            }
+            
+            const content = element.content.length > 200 
+                ? element.content.substring(0, 200) + '...' 
+                : element.content;
+            
+            elemDiv.innerHTML = `
+                <div class="element-header">
+                    <div>
+                        <span class="element-type-badge element-type-${element.element_type}">${element.element_type}</span>
+                        <span class="element-order">Order: ${element.reading_order}</span>
+                    </div>
+                </div>
+                <div class="element-content">${escapeHtml(content)}</div>
+                ${element.bbox ? `
+                <div class="element-meta">
+                    <span>BBox: [${element.bbox.x1}, ${element.bbox.y1}, ${element.bbox.x2}, ${element.bbox.y2}]</span>
+                    <span>Confidence: ${(element.confidence * 100).toFixed(1)}%</span>
+                </div>
+                ` : ''}
+            `;
+            
+            elemDiv.addEventListener('click', () => {
+                selectElement(element.element_id);
+            });
+            
+            return elemDiv;
+        }
+
+        // Select element
+        function selectElement(elementId) {
+            selectedElementId = elementId;
+            const element = ocrElements.find(e => e.element_id === elementId);
+            
+            // Update list highlighting
+            document.querySelectorAll('.element-item').forEach(item => {
+                item.classList.remove('highlighted');
+            });
+            document.querySelectorAll('.element-item').forEach(item => {
+                if (item.textContent.includes(`Order: ${element.reading_order}`)) {
+                    item.classList.add('highlighted');
+                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+            
+            // Update canvas
+            drawBoundingBoxes();
+            
+            // Show details
+            showElementDetails(element);
+        }
+
+        // Show element details
+        function showElementDetails(element) {
+            const detailsPanel = document.getElementById('elementDetails');
+            const detailsContent = document.getElementById('detailsContent');
+            
+            detailsContent.innerHTML = `
+                <div class="details-item">
+                    <span class="details-label">Element ID:</span>
+                    <span>${element.element_id}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Type:</span>
+                    <span>${element.element_type}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Reading Order:</span>
+                    <span>${element.reading_order}</span>
+                </div>
+                ${element.bbox ? `
+                <div class="details-item">
+                    <span class="details-label">Bounding Box:</span>
+                    <span>[${element.bbox.x1}, ${element.bbox.y1}, ${element.bbox.x2}, ${element.bbox.y2}]</span>
+                </div>
+                ` : ''}
+                <div class="details-item">
+                    <span class="details-label">Confidence:</span>
+                    <span>${(element.confidence * 100).toFixed(1)}%</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Content:</span>
+                    <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; white-space: pre-wrap;">${escapeHtml(element.content)}</div>
+                </div>
+            `;
+            
+            detailsPanel.style.display = 'block';
+        }
+
+        // Filter by type
+        function filterByType(type) {
+            activeFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+            drawBoundingBoxes();
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Setup event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterByType(btn.dataset.type);
+                });
+            });
+
+            // View toggles
+            document.querySelectorAll('.view-toggle').forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    document.querySelectorAll('.view-toggle').forEach(t => t.classList.remove('active'));
+                    toggle.classList.add('active');
+                    currentView = toggle.dataset.view;
+                    renderStructuredList();
+                });
+            });
+        });
+
+        // Utility functions
+        function showLoading() {
+            loading.classList.add('show');
+        }
+
+        function hideLoading() {
+            loading.classList.remove('show');
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('show');
+        }
+
+        function hideError() {
+            error.classList.remove('show');
+        }
+
+        function showResults() {
+            results.classList.add('show');
+        }
+
+        function hideResults() {
+            results.classList.remove('show');
+        }
+    </script>
+</body>
+</html>
+

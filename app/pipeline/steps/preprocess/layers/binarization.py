@@ -1,8 +1,7 @@
 """
-Layer 4: Binarization normalization.
+Binarization layer using Sauvola's adaptive thresholding.
 
 This layer handles:
-- Otsu's thresholding
 - Sauvola's adaptive thresholding
 """
 
@@ -14,19 +13,17 @@ from app.core.config import PreprocessingConfig
 from app.pipeline.steps.preprocess.utils import image_to_base64
 
 
-def apply_binarization_layer(
+def apply_sauvola_binarization(
     cv_image: np.ndarray,
     config: PreprocessingConfig,
     original_image: Image.Image,
 ) -> tuple[np.ndarray, dict]:
     """
-    Apply Layer 4: Binarization normalization.
+    Apply Sauvola's adaptive thresholding for binarization.
     
     This layer:
     1. Converts to grayscale (if needed)
-    2. Applies Otsu's thresholding
-    3. Applies Sauvola's thresholding
-    4. Shows both outputs for comparison
+    2. Applies Sauvola's adaptive thresholding
     
     Args:
         cv_image: OpenCV image (BGR or grayscale)
@@ -39,7 +36,7 @@ def apply_binarization_layer(
     phase_outputs = {}
     original_size = cv_image.shape[:2][::-1]  # (width, height)
     
-    # Phase 4.1: Ensure grayscale
+    # Ensure grayscale
     if len(cv_image.shape) == 3:
         gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
     else:
@@ -52,155 +49,55 @@ def apply_binarization_layer(
         "size": gray_pil.size,
     }
     
-    # Phase 4.2: Otsu's Thresholding
-    otsu_outputs = {"enabled": False}
-    otsu_binary = None
-    
-    if config.enable_otsu:
-        # Map threshold type string to OpenCV constant
-        threshold_type_map = {
-            "BINARY": cv2.THRESH_BINARY,
-            "BINARY_INV": cv2.THRESH_BINARY_INV,
-            "TRUNC": cv2.THRESH_TRUNC,
-            "TOZERO": cv2.THRESH_TOZERO,
-            "TOZERO_INV": cv2.THRESH_TOZERO_INV,
-        }
-        threshold_type = threshold_type_map.get(
-            config.otsu_threshold_type, cv2.THRESH_BINARY
-        )
-        
-        # Apply Otsu's thresholding
-        threshold_value, otsu_binary = apply_otsu_threshold(
-            gray, config.otsu_max_value, threshold_type
-        )
-        
-        # Calculate quality metric
-        quality_metric = calculate_binarization_quality(otsu_binary)
-        
-        # Store original grayscale
-        original_before_otsu_pil = Image.fromarray(gray)
-        
-        otsu_binary_pil = Image.fromarray(otsu_binary)
-        otsu_outputs = {
-            "enabled": True,
-            "threshold_value": float(threshold_value),
-            "threshold_type": config.otsu_threshold_type,
-            "original_image": image_to_base64(original_before_otsu_pil),
-            "binary_image": image_to_base64(otsu_binary_pil),
-            "quality_metric": float(quality_metric),
-        }
-    
-    phase_outputs["otsu"] = otsu_outputs
-    
-    # Phase 4.3: Sauvola's Thresholding
-    sauvola_outputs = {"enabled": False}
-    sauvola_binary = None
-    
-    if config.enable_sauvola:
-        # Calculate parameters
-        if (
-            config.sauvola_window_size is not None
-            and config.sauvola_k is not None
-            and config.sauvola_r is not None
-        ):
-            window_size = config.sauvola_window_size
-            k = config.sauvola_k
-            r = config.sauvola_r
-        else:
-            window_size, k, r = calculate_sauvola_params(gray, config)
-        
-        # Ensure window size is odd
-        if window_size % 2 == 0:
-            window_size += 1
-        
-        # Apply Sauvola's thresholding
-        sauvola_binary = apply_sauvola_threshold(gray, window_size, k, r)
-        
-        # Calculate quality metric
-        quality_metric = calculate_binarization_quality(sauvola_binary)
-        
-        # Store original grayscale
-        original_before_sauvola_pil = Image.fromarray(gray)
-        
-        sauvola_binary_pil = Image.fromarray(sauvola_binary)
-        sauvola_outputs = {
-            "enabled": True,
-            "window_size": int(window_size),
-            "k": float(k),
-            "r": float(r),
-            "original_image": image_to_base64(original_before_sauvola_pil),
-            "binary_image": image_to_base64(sauvola_binary_pil),
-            "quality_metric": float(quality_metric),
-        }
-    
-    phase_outputs["sauvola"] = sauvola_outputs
-    
-    # Phase 4.4: Output Selection
-    final_image = cv_image.copy()
-    method_used = "none"
-    
-    if config.binarization_output_method == "otsu" and otsu_outputs["enabled"] and otsu_binary is not None:
-        # Convert binary to BGR for consistency
-        if len(cv_image.shape) == 3:
-            final_image = cv2.cvtColor(otsu_binary, cv2.COLOR_GRAY2BGR)
-        else:
-            final_image = otsu_binary
-        method_used = "otsu"
-    elif (
-        config.binarization_output_method == "sauvola"
-        and sauvola_outputs["enabled"]
-        and sauvola_binary is not None
+    # Calculate parameters
+    if (
+        config.sauvola_window_size is not None
+        and config.sauvola_k is not None
+        and config.sauvola_r is not None
     ):
-        # Convert binary to BGR for consistency
-        if len(cv_image.shape) == 3:
-            final_image = cv2.cvtColor(sauvola_binary, cv2.COLOR_GRAY2BGR)
-        else:
-            final_image = sauvola_binary
-        method_used = "sauvola"
-    elif config.binarization_output_method == "both":
-        # Use Sauvola as default if both are enabled (changed from Otsu)
-        if sauvola_outputs["enabled"] and sauvola_binary is not None:
-            if len(cv_image.shape) == 3:
-                final_image = cv2.cvtColor(sauvola_binary, cv2.COLOR_GRAY2BGR)
-            else:
-                final_image = sauvola_binary
-            method_used = "sauvola"
-        elif otsu_outputs["enabled"] and otsu_binary is not None:
-            if len(cv_image.shape) == 3:
-                final_image = cv2.cvtColor(otsu_binary, cv2.COLOR_GRAY2BGR)
-            else:
-                final_image = otsu_binary
-            method_used = "otsu"
+        window_size = config.sauvola_window_size
+        k = config.sauvola_k
+        r = config.sauvola_r
+    else:
+        window_size, k, r = calculate_sauvola_params(gray, config)
+    
+    # Ensure window size is odd
+    if window_size % 2 == 0:
+        window_size += 1
+    
+    # Apply Sauvola's thresholding
+    sauvola_binary = apply_sauvola_threshold(gray, window_size, k, r)
+    
+    # Calculate quality metric
+    quality_metric = calculate_binarization_quality(sauvola_binary)
+    
+    # Store binary output
+    sauvola_binary_pil = Image.fromarray(sauvola_binary)
+    phase_outputs["binary"] = {
+        "enabled": True,
+        "window_size": int(window_size),
+        "k": float(k),
+        "r": float(r),
+        "original_image": image_to_base64(gray_pil),
+        "binary_image": image_to_base64(sauvola_binary_pil),
+        "quality_metric": float(quality_metric),
+    }
+    
+    # Convert binary to BGR for consistency
+    if len(cv_image.shape) == 3:
+        final_image = cv2.cvtColor(sauvola_binary, cv2.COLOR_GRAY2BGR)
+    else:
+        final_image = sauvola_binary
     
     # Metadata
     phase_outputs["metadata"] = {
         "original_size": original_size,
         "final_size": final_image.shape[:2][::-1],
-        "method_used": method_used,
-        "binarization_applied": method_used != "none",
+        "method_used": "sauvola",
+        "binarization_applied": True,
     }
     
     return final_image, phase_outputs
-
-
-def apply_otsu_threshold(
-    gray_image: np.ndarray, max_value: int, threshold_type: int
-) -> tuple[float, np.ndarray]:
-    """
-    Apply Otsu's thresholding method.
-    
-    Args:
-        gray_image: Grayscale image
-        max_value: Maximum value for thresholded pixels
-        threshold_type: OpenCV threshold type constant
-        
-    Returns:
-        Tuple of (threshold_value, binary_image)
-    """
-    threshold_value, binary = cv2.threshold(
-        gray_image, 0, max_value, threshold_type | cv2.THRESH_OTSU
-    )
-    return threshold_value, binary
 
 
 def apply_sauvola_threshold(
@@ -377,6 +274,7 @@ def calculate_binarization_quality(binary_image: np.ndarray) -> float:
     quality = 1.0 - abs(ratio - 0.5) * 2.0
     
     return max(0.0, min(1.0, quality))
+
 
 
 

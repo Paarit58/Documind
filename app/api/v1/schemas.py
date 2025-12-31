@@ -55,6 +55,61 @@ class TextBlockSchema(BaseModel):
     }
 
 
+class DocumentElementSchema(BaseModel):
+    """A single document element with structured metadata."""
+    
+    element_id: str = Field(description="Unique identifier for the element")
+    element_type: str = Field(description="Type of element (title, paragraph, table, formula, chart, etc.)")
+    content: str = Field(description="Extracted text content")
+    bbox: BBoxSchema | None = Field(default=None, description="Bounding box coordinates")
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Confidence score (0.0-1.0)"
+    )
+    reading_order: int = Field(ge=0, description="Reading order position")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "element_id": "elem_0",
+                "element_type": "title",
+                "content": "Document Title",
+                "bbox": {"x1": 50, "y1": 100, "x2": 450, "y2": 150},
+                "confidence": 0.95,
+                "reading_order": 1,
+                "metadata": {}
+            }
+        }
+    }
+
+
+class DocumentSectionSchema(BaseModel):
+    """A logical section of a document."""
+    
+    section_id: str = Field(description="Unique identifier for the section")
+    section_type: str = Field(description="Type of section (header, body, footer, sidebar, etc.)")
+    elements: list[DocumentElementSchema] = Field(
+        default_factory=list,
+        description="Elements within this section"
+    )
+    bbox: BBoxSchema | None = Field(default=None, description="Overall section bounding box")
+    reading_order: int = Field(ge=0, description="Reading order position")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "section_id": "section_0",
+                "section_type": "header",
+                "elements": [],
+                "bbox": {"x1": 0, "y1": 0, "x2": 800, "y2": 200},
+                "reading_order": 0
+            }
+        }
+    }
+
+
 class OCRMetadataSchema(BaseModel):
     """Metadata about OCR processing."""
     
@@ -97,6 +152,23 @@ class OCRResponse(BaseModel):
         default_factory=list,
         description="Any errors encountered"
     )
+    # Enhanced structure fields (optional for backward compatibility)
+    document_type: str | None = Field(
+        default=None,
+        description="Detected document type (invoice, form, letter, report, general)"
+    )
+    language: str | None = Field(
+        default=None,
+        description="Detected language"
+    )
+    sections: list[DocumentSectionSchema] = Field(
+        default_factory=list,
+        description="Document sections (hierarchical structure)"
+    )
+    elements: list[DocumentElementSchema] = Field(
+        default_factory=list,
+        description="All document elements (flat list)"
+    )
     
     model_config = {
         "json_schema_extra": {
@@ -114,7 +186,11 @@ class OCRResponse(BaseModel):
                     }
                 ],
                 "raw_output": {},
-                "errors": []
+                "errors": [],
+                "document_type": "general",
+                "language": "en",
+                "sections": [],
+                "elements": []
             }
         }
     }

@@ -179,11 +179,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     #     # Re-raise to prevent app from starting in broken state
     #     raise
     
-    # # Load PaddleOCR-VL engine (optional, won't fail startup)
-    # try:
-    #     load_paddleocr_engine()
-    # except Exception as e:
-    #     logger.warning(f"Failed to load PaddleOCR-VL engine: {e}")
+    # Load PaddleOCR-VL engine (optional, won't fail startup)
+    try:
+        load_paddleocr_engine()
+    except Exception as e:
+        logger.warning(f"Failed to load PaddleOCR-VL engine: {e}")
     
     # Skip DeepSeek OCR engine loading for now
     # try:
@@ -258,7 +258,7 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def ui(request: Request) -> HTMLResponse:
         """Serve the OCR UI interface."""
-        return templates.TemplateResponse("index.html", {"request": request})
+        return templates.TemplateResponse("simple.html", {"request": request})
     
     # API info endpoint
     @app.get("/api", include_in_schema=False)

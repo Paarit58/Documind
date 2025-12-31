@@ -1268,12 +1268,17 @@
                     const preprocessResult = stepResults.preprocess;
                     
                     // Determine which image to display as the main preprocessed image
-                    // Prefer the final preprocessed_image, but fallback to CLAHE if available
+                    // Prefer the final preprocessed_image, but fallback to comb field removal result
                     let mainImageSrc = preprocessResult.preprocessed_image;
                     
-                    // If no main preprocessed image, try to use CLAHE from phase outputs
-                    if (!mainImageSrc && preprocessResult.phase_outputs?.layer1_color_lighting?.clahe?.image) {
-                        mainImageSrc = preprocessResult.phase_outputs.layer1_color_lighting.clahe.image;
+                    // If no main preprocessed image, try to use final result from comb field removal
+                    if (!mainImageSrc && preprocessResult.phase_outputs?.comb_field_removal?.final_result?.image) {
+                        mainImageSrc = preprocessResult.phase_outputs.comb_field_removal.final_result.image;
+                    }
+                    
+                    // If still no image, try binarization result
+                    if (!mainImageSrc && preprocessResult.phase_outputs?.binarization?.binary?.image) {
+                        mainImageSrc = preprocessResult.phase_outputs.binarization.binary.image;
                     }
                     
                     // Display preprocessed image if available
@@ -1309,88 +1314,14 @@
                         if (preprocessResult.phase_outputs) {
                             let phaseHTML = '';
                             
-                            // Layer 1: Color & Lighting
-                            if (preprocessResult.phase_outputs.layer1_color_lighting) {
-                                const layer1 = preprocessResult.phase_outputs.layer1_color_lighting;
+                            // Deskew
+                            if (preprocessResult.phase_outputs.deskew) {
+                                const deskew = preprocessResult.phase_outputs.deskew;
                                 phaseHTML += '<div class="phase-section">';
-                                phaseHTML += '<div class="phase-title">Layer 1: Color & Lighting</div>';
-                                
-                                // Grayscale output
-                                if (layer1.grayscale) {
-                                    phaseHTML += '<div style="margin-bottom: 15px;">';
-                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Grayscale Conversion</div>';
-                                    phaseHTML += `<img src="${layer1.grayscale.image}" class="phase-image" alt="Grayscale" onerror="console.error('Failed to load grayscale image')">`;
-                                    if (layer1.grayscale.size) {
-                                        phaseHTML += `<div class="phase-metadata">Size: ${layer1.grayscale.size[0]} × ${layer1.grayscale.size[1]}</div>`;
-                                    }
-                                    phaseHTML += '</div>';
-                                }
-                                
-                                // CLAHE output
-                                if (layer1.clahe) {
-                                    phaseHTML += '<div style="margin-bottom: 15px;">';
-                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">CLAHE Enhancement</div>';
-                                    phaseHTML += `<img src="${layer1.clahe.image}" class="phase-image" alt="CLAHE" onerror="console.error('Failed to load CLAHE image')">`;
-                                    if (layer1.clahe.size) {
-                                        phaseHTML += `<div class="phase-metadata">Size: ${layer1.clahe.size[0]} × ${layer1.clahe.size[1]}`;
-                                        if (layer1.clahe.clip_limit !== undefined) {
-                                            phaseHTML += ` | Clip Limit: ${layer1.clahe.clip_limit}`;
-                                        }
-                                        if (layer1.clahe.tile_grid_size) {
-                                            phaseHTML += ` | Tile Grid: ${layer1.clahe.tile_grid_size[0]}×${layer1.clahe.tile_grid_size[1]}`;
-                                        }
-                                        phaseHTML += '</div>';
-                                    }
-                                    phaseHTML += '</div>';
-                                }
-                                
-                                // Denoised output (if available)
-                                if (layer1.denoised) {
-                                    phaseHTML += '<div style="margin-bottom: 15px;">';
-                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Noise Reduction (Bilateral Filter)</div>';
-                                    phaseHTML += `<img src="${layer1.denoised.image}" class="phase-image" alt="Denoised" onerror="console.error('Failed to load denoised image')">`;
-                                    if (layer1.denoised.size) {
-                                        phaseHTML += `<div class="phase-metadata">Size: ${layer1.denoised.size[0]} × ${layer1.denoised.size[1]}`;
-                                        if (layer1.denoised.d !== undefined) {
-                                            phaseHTML += ` | Filter Size: ${layer1.denoised.d}`;
-                                        }
-                                        if (layer1.denoised.sigma_color !== undefined && layer1.denoised.sigma_space !== undefined) {
-                                            phaseHTML += ` | Sigma: ${layer1.denoised.sigma_color}/${layer1.denoised.sigma_space}`;
-                                        }
-                                        phaseHTML += '</div>';
-                                    }
-                                    phaseHTML += '</div>';
-                                }
-                                
-                                // Metadata
-                                if (layer1.metadata) {
-                                    const meta = layer1.metadata;
-                                    phaseHTML += '<div class="phase-metadata">';
-                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Statistics:</div>';
-                                    if (meta.grayscale_mean !== undefined) {
-                                        phaseHTML += `<div>Grayscale Mean: ${meta.grayscale_mean.toFixed(2)} | Std: ${meta.grayscale_std?.toFixed(2) || 'N/A'}</div>`;
-                                    }
-                                    if (meta.clahe_mean !== undefined) {
-                                        phaseHTML += `<div>CLAHE Mean: ${meta.clahe_mean.toFixed(2)} | Std: ${meta.clahe_std?.toFixed(2) || 'N/A'}</div>`;
-                                    }
-                                    if (meta.final_mean !== undefined) {
-                                        phaseHTML += `<div>Final (Denoised) Mean: ${meta.final_mean.toFixed(2)} | Std: ${meta.final_std?.toFixed(2) || 'N/A'}</div>`;
-                                    }
-                                    phaseHTML += '</div>';
-                                }
-                                
-                                phaseHTML += '</div>';
-                            }
-                            
-                            // Layer 2: Geometric
-                            if (preprocessResult.phase_outputs.layer2_geometric) {
-                                const layer2 = preprocessResult.phase_outputs.layer2_geometric;
-                                phaseHTML += '<div class="phase-section">';
-                                phaseHTML += '<div class="phase-title">Layer 2: Geometric (Alignment)</div>';
+                                phaseHTML += '<div class="phase-title">Deskew</div>';
                                 
                                 // Deskew section
-                                if (layer2.deskew) {
-                                    const deskew = layer2.deskew;
+                                if (deskew) {
                                     phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
                                     phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Deskewing</div>';
                                     
@@ -1517,51 +1448,156 @@
                                 phaseHTML += '</div>';
                             }
                             
-                            // Layer 3: Signal-to-Noise
-                            if (preprocessResult.phase_outputs.layer3_signal_noise) {
-                                const layer3 = preprocessResult.phase_outputs.layer3_signal_noise;
+                            // Binarization (Sauvola only)
+                            if (preprocessResult.phase_outputs.binarization) {
+                                const binarization = preprocessResult.phase_outputs.binarization;
                                 phaseHTML += '<div class="phase-section">';
-                                phaseHTML += '<div class="phase-title">Layer 3: Signal-to-Noise</div>';
+                                phaseHTML += '<div class="phase-title">Binarization (Sauvola)</div>';
                                 
-                                // Noise Detection Section
-                                if (layer3.noise_detection) {
-                                    const noiseDet = layer3.noise_detection;
+                                // Grayscale input
+                                if (binarization.grayscale) {
                                     phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
-                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Noise Detection</div>';
-                                    
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Grayscale Input</div>';
+                                    phaseHTML += `<img src="${binarization.grayscale.image}" class="phase-image" alt="Grayscale" onerror="console.error('Failed to load grayscale image')">`;
+                                    if (binarization.grayscale.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${binarization.grayscale.size[0]} × ${binarization.grayscale.size[1]}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Binary image
+                                if (binarization.binary) {
+                                    phaseHTML += '<div style="margin-bottom: 20px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Binary Image (Sauvola)</div>';
+                                    phaseHTML += `<img src="${binarization.binary.image}" class="phase-image" alt="Sauvola Binary" onerror="console.error('Failed to load Sauvola binary image')">`;
                                     phaseHTML += '<div class="phase-metadata">';
-                                    if (noiseDet.noise_level !== undefined) {
-                                        phaseHTML += `<div><strong>Noise Level:</strong> ${noiseDet.noise_level.toFixed(3)}</div>`;
+                                    if (binarization.binary.window_size !== undefined) {
+                                        phaseHTML += `Window Size: ${binarization.binary.window_size}`;
                                     }
-                                    if (noiseDet.noise_score !== undefined) {
-                                        phaseHTML += `<div><strong>Noise Score:</strong> ${noiseDet.noise_score.toFixed(3)}</div>`;
+                                    if (binarization.binary.k !== undefined && binarization.binary.r !== undefined) {
+                                        phaseHTML += ` | Parameters: k=${binarization.binary.k.toFixed(3)}, r=${binarization.binary.r.toFixed(1)}`;
                                     }
-                                    if (noiseDet.detection_method) {
-                                        phaseHTML += `<div><strong>Detection Method:</strong> ${noiseDet.detection_method}</div>`;
-                                    }
-                                    if (noiseDet.auto_detected !== undefined) {
-                                        phaseHTML += `<div><strong>Auto-Detected:</strong> ${noiseDet.auto_detected ? 'Yes' : 'No'}</div>`;
+                                    if (binarization.binary.quality_metric !== undefined) {
+                                        phaseHTML += ` | Quality: ${(binarization.binary.quality_metric * 100).toFixed(1)}%`;
                                     }
                                     phaseHTML += '</div>';
                                     phaseHTML += '</div>';
                                 }
                                 
-                                // Median Blur Section
-                                if (layer3.median_blur && layer3.median_blur.enabled) {
-                                    const median = layer3.median_blur;
+                                // Metadata
+                                if (binarization.metadata) {
+                                    const meta = binarization.metadata;
+                                    phaseHTML += '<div class="phase-metadata">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Information:</div>';
+                                    if (meta.original_size) {
+                                        phaseHTML += `<div>Original Size: ${meta.original_size[0]} × ${meta.original_size[1]}</div>`;
+                                    }
+                                    if (meta.final_size) {
+                                        phaseHTML += `<div>Final Size: ${meta.final_size[0]} × ${meta.final_size[1]}</div>`;
+                                    }
+                                    if (meta.method_used) {
+                                        phaseHTML += `<div>Method Used: ${meta.method_used}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            // Comb Field Removal
+                            if (preprocessResult.phase_outputs.comb_field_removal) {
+                                const combRemoval = preprocessResult.phase_outputs.comb_field_removal;
+                                phaseHTML += '<div class="phase-section">';
+                                phaseHTML += '<div class="phase-title">Comb Field Removal</div>';
+                                
+                                // Binary conversion
+                                if (combRemoval.binary) {
                                     phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
-                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Median Blur Filtering</div>';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Binary Conversion</div>';
+                                    phaseHTML += `<img src="${combRemoval.binary.image}" class="phase-image" alt="Binary" onerror="console.error('Failed to load binary image')">`;
+                                    if (combRemoval.binary.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${combRemoval.binary.size[0]} × ${combRemoval.binary.size[1]}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Raw line extraction
+                                if (combRemoval.raw_vertical_lines || combRemoval.raw_horizontal_lines) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Raw Line Extraction</div>';
                                     
-                                    // Original image
-                                    if (median.original_image) {
+                                    if (combRemoval.raw_vertical_lines) {
                                         phaseHTML += '<div style="margin-bottom: 15px;">';
-                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Original (Before Median Blur)</div>';
-                                        phaseHTML += `<img src="${median.original_image}" class="phase-image" alt="Original" onerror="console.error('Failed to load original image')">`;
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Vertical Lines</div>';
+                                        phaseHTML += `<img src="${combRemoval.raw_vertical_lines.image}" class="phase-image" alt="Vertical Lines" onerror="console.error('Failed to load vertical lines')">`;
                                         phaseHTML += '</div>';
                                     }
                                     
-                                    // Filtered image
-                                    if (median.filtered_image) {
+                                    if (combRemoval.raw_horizontal_lines) {
+                                        phaseHTML += '<div style="margin-bottom: 15px;">';
+                                        phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Horizontal Lines</div>';
+                                        phaseHTML += `<img src="${combRemoval.raw_horizontal_lines.image}" class="phase-image" alt="Horizontal Lines" onerror="console.error('Failed to load horizontal lines')">`;
+                                        phaseHTML += '</div>';
+                                    }
+                                    
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Final result
+                                if (combRemoval.final_result) {
+                                    phaseHTML += '<div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Final Result (After Inpainting)</div>';
+                                    phaseHTML += `<img src="${combRemoval.final_result.image}" class="phase-image" alt="Final Result" onerror="console.error('Failed to load final result')">`;
+                                    if (combRemoval.final_result.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${combRemoval.final_result.size[0]} × ${combRemoval.final_result.size[1]}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Full mask
+                                if (combRemoval.full_mask) {
+                                    phaseHTML += '<div style="margin-bottom: 20px;">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 10px; color: #555; font-size: 1.05em;">Removal Mask</div>';
+                                    phaseHTML += `<img src="${combRemoval.full_mask.image}" class="phase-image" alt="Full Mask" onerror="console.error('Failed to load full mask')">`;
+                                    if (combRemoval.full_mask.size) {
+                                        phaseHTML += `<div class="phase-metadata">Size: ${combRemoval.full_mask.size[0]} × ${combRemoval.full_mask.size[1]}</div>`;
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                // Metadata
+                                if (combRemoval.metadata) {
+                                    const meta = combRemoval.metadata;
+                                    phaseHTML += '<div class="phase-metadata">';
+                                    phaseHTML += '<div style="font-weight: 600; margin-bottom: 5px;">Statistics:</div>';
+                                    if (meta.original_size) {
+                                        phaseHTML += `<div>Original Size: ${meta.original_size[0]} × ${meta.original_size[1]}</div>`;
+                                    }
+                                    if (meta.final_size) {
+                                        phaseHTML += `<div>Final Size: ${meta.final_size[0]} × ${meta.final_size[1]}</div>`;
+                                    }
+                                    if (meta.statistics) {
+                                        const stats = meta.statistics;
+                                        if (stats.vertical_lines_detected !== undefined) {
+                                            phaseHTML += `<div>Vertical Lines Detected: ${stats.vertical_lines_detected}</div>`;
+                                        }
+                                        if (stats.horizontal_lines_detected !== undefined) {
+                                            phaseHTML += `<div>Horizontal Lines Detected: ${stats.horizontal_lines_detected}</div>`;
+                                        }
+                                        if (stats.rows_with_seriality !== undefined) {
+                                            phaseHTML += `<div>Rows with Seriality: ${stats.rows_with_seriality}</div>`;
+                                        }
+                                        if (stats.total_rows !== undefined) {
+                                            phaseHTML += `<div>Total Rows: ${stats.total_rows}</div>`;
+                                        }
+                                    }
+                                    phaseHTML += '</div>';
+                                }
+                                
+                                phaseHTML += '</div>';
+                            }
+                            
+                            phaseOutputs.innerHTML = phaseHTML;
                                         phaseHTML += '<div style="margin-bottom: 15px;">';
                                         phaseHTML += '<div style="font-weight: 600; margin-bottom: 8px; color: #555;">Median Blurred Image</div>';
                                         phaseHTML += `<img src="${median.filtered_image}" class="phase-image" alt="Median Blurred" onerror="console.error('Failed to load median blurred image')">`;
@@ -1668,9 +1704,6 @@
                                 
                                 phaseHTML += '</div>';
                             }
-                            
-                            // Layer 4: Binarization
-                            if (preprocessResult.phase_outputs.layer4_binarization) {
                                 const layer4 = preprocessResult.phase_outputs.layer4_binarization;
                                 phaseHTML += '<div class="phase-section">';
                                 phaseHTML += '<div class="phase-title">Layer 4: Binarization</div>';
@@ -1817,9 +1850,6 @@
                                 
                                 phaseHTML += '</div>';
                             }
-                            
-                            // Layer 5: Structural Analysis (Phase 1: Kernel Definition)
-                            if (preprocessResult.phase_outputs.layer5_structural_analysis) {
                                 const layer5 = preprocessResult.phase_outputs.layer5_structural_analysis;
                                 if (layer5.phase1_kernel_definition) {
                                     const phase1 = layer5.phase1_kernel_definition;
@@ -2304,14 +2334,6 @@
                                     }
                                     phaseHTML += '<strong>Text Exclusion:</strong> Excludes all detected text components to preserve data.<br>';
                                     phaseHTML += '<strong>Dilation:</strong> Slightly thickens detected lines (1-2 pixels) to ensure complete removal without leaving "ghost lines" behind.<br>';
-                                    phaseHTML += '<strong>Clean Zone Map:</strong> This mask represents everything that is NOT data - the "Search and Destroy" map for the next phase.';
-                                    phaseHTML += '</div>';
-                                    phaseHTML += '</div>';
-                                }
-                                
-                                phaseHTML += '</div>';
-                            }
-                            }
                             
                             phaseOutputs.innerHTML = phaseHTML;
                         } else {

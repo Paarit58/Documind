@@ -135,6 +135,107 @@ class OCRResult:
         }
 
 
+@dataclass(frozen=True)
+class DocumentElement:
+    """
+    A single document element with structured metadata.
+    
+    Represents individual elements extracted from a document such as
+    titles, paragraphs, tables, formulas, charts, etc.
+    """
+    element_id: str
+    element_type: str  # "title", "paragraph", "table", "formula", "chart", etc.
+    content: str
+    bbox: BBox | None = None
+    confidence: float = 1.0
+    reading_order: int = 0
+    metadata: dict[str, Any] = field(default_factory=dict)
+    
+    def __post_init__(self) -> None:
+        """Validate document element data."""
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("Confidence must be between 0.0 and 1.0")
+        if self.reading_order < 0:
+            raise ValueError("Reading order must be non-negative")
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "element_id": self.element_id,
+            "element_type": self.element_type,
+            "content": self.content,
+            "bbox": self.bbox.to_dict() if self.bbox else None,
+            "confidence": self.confidence,
+            "reading_order": self.reading_order,
+            "metadata": self.metadata,
+        }
+    
+    def to_text_block(self) -> TextBlock:
+        """Convert to TextBlock for backward compatibility."""
+        return TextBlock(
+            text=self.content,
+            confidence=self.confidence,
+            bbox=self.bbox,
+        )
+
+
+@dataclass
+class DocumentSection:
+    """
+    A logical section of a document.
+    
+    Groups related document elements into sections such as
+    header, body, footer, sidebar, etc.
+    """
+    section_id: str
+    section_type: str  # "header", "body", "footer", "sidebar", etc.
+    elements: list[DocumentElement] = field(default_factory=list)
+    bbox: BBox | None = None
+    reading_order: int = 0
+    
+    def __post_init__(self) -> None:
+        """Validate document section data."""
+        if self.reading_order < 0:
+            raise ValueError("Reading order must be non-negative")
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "section_id": self.section_id,
+            "section_type": self.section_type,
+            "elements": [elem.to_dict() for elem in self.elements],
+            "bbox": self.bbox.to_dict() if self.bbox else None,
+            "reading_order": self.reading_order,
+        }
+
+
+@dataclass
+class EnhancedOCRResult(OCRResult):
+    """
+    Enhanced OCR result with hierarchical document structure.
+    
+    Extends OCRResult with:
+    - Document-level metadata (type, language)
+    - Hierarchical structure (sections and elements)
+    - Maintains backward compatibility with text_blocks
+    """
+    document_type: str = "general"  # "invoice", "form", "letter", "report", "general"
+    language: str | None = None
+    sections: list[DocumentSection] = field(default_factory=list)
+    elements: list[DocumentElement] = field(default_factory=list)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary representation with enhanced structure."""
+        base_dict = super().to_dict()
+        base_dict.update({
+            "document_type": self.document_type,
+            "language": self.language,
+            "sections": [section.to_dict() for section in self.sections],
+            "elements": [elem.to_dict() for elem in self.elements],
+        })
+        return base_dict
+
+
 # Type alias for image data (PIL Image will be used at runtime)
 # This avoids importing PIL in the types module
 ImageType = Any
